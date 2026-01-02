@@ -7,7 +7,7 @@
 
 [build-system]
     build-backend = "maturin"
-    requires      = ["maturin>=1.8,<2.0"]
+    requires      = ["maturin>=1.8"]
 
 [tool.maturin]
     features = ["pyo3/extension-module"]
