@@ -1,13 +1,25 @@
 [project]
-    dependencies    = []
     description     = "Pathlib in Rust"
     name            = "pyopath"
     readme          = "README.md"
-    requires-python = ">=3.14"
+    requires-python = ">=3.13"
     version         = "0.1.0"
 
+[build-system]
+    build-backend = "maturin"
+    requires      = ["maturin>=1.8,<2.0"]
+
+[tool.maturin]
+    features = ["pyo3/extension-module"]
+
 [dependency-groups]
-    dev = ["polars>=1.36.1", "pyochain>=0.6.1.51"]
+    dev = [
+        "maturin>=1.8",
+        "polars>=1.36.1",
+        "pyochain>=0.6.1.51",
+        "pytest>=8.0",
+    ]
+
 [tool.ruff]
     lint.ignore = [
         "C417",
@@ -17,6 +29,7 @@
         "E501",
         "FIX002",
         "PLC0415",
+        "PYI021",
         "S101",
         "S608",
         "SLF001",

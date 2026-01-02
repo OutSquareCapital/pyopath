@@ -1,10 +1,17 @@
-# Python-generated files
+# Python
 __pycache__/
 *.py[oc]
-build/
+*.egg-info
+.venv/
+
+# Rust
+target/
+Cargo.lock
+
+# Build artifacts
 dist/
 wheels/
-*.egg-info
-
-# Virtual environments
-.venv
+build/
+*.so
+*.dll
+*.pyd

@@ -20,7 +20,8 @@ Design and planning phase.
 
 ## Project layout
 
-- `src/pyopath/`: Python package façade and import surface.
+- `src/`: Rust source code (PyO3 extension module).
+- `pyopath.pyi`: Python type stubs for IDE support.
 - `docs/`: architecture, compatibility notes, and roadmap.
 
 ## API surface
@@ -45,13 +46,19 @@ As in `pathlib`, `Path` is the platform-specific concrete class returned by `Pat
 During early development, the preferred workflow is an editable install into the `uv` environment:
 
 ```bash
-uv run maturin develop
+uv run maturin develop --release
 ```
 
 Build wheels:
 
 ```bash
-uv run maturin build
+uv run maturin build --release
+```
+
+Run tests:
+
+```bash
+uv run pytest
 ```
 
 ## Documentation

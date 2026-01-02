@@ -11,26 +11,16 @@ This project uses:
 1) Sync the `uv` environment:
 
 ```bash
-+uv sync
+uv sync
 ```
 
-1) Install maturin (choose one):
+1) Develop-install the extension (maturin is a build dependency):
 
 ```bash
-uv tool install maturin
+uv run maturin develop --release
 ```
 
-or
-
-```bash
-cargo install maturin
-```
-
-1) Develop-install the extension:
-
-```bash
-uv run maturin develop
-```
+This compiles the Rust code and installs the extension into the virtual environment.
 
 ## Testing
 
