@@ -1,106 +1,69 @@
 # Compatibility with `pathlib`
 
-This document defines what “full clone” means for `pyopath`.
+## Implemented ✅
 
-## Scope
+### Classes
 
-Target is Python's standard library `pathlib` behavior:
+- [x] `PurePath`, `PurePosixPath`, `PureWindowsPath`
+- [x] `Path`, `PosixPath`, `WindowsPath`
 
-- `PurePath`, `PurePosixPath`, `PureWindowsPath`
-- `Path`, `PosixPath`, `WindowsPath`
-- Methods and properties on these types
-- `os.PathLike` protocol (`__fspath__`)
+### Properties
 
-The goal is behavioral compatibility, not just API-shape compatibility.
+- [x] `drive`, `root`, `anchor`, `parts`
+- [x] `name`, `suffix`, `suffixes`, `stem`
+- [x] `parent`, `parents`
 
-## Key semantic areas to match
+### Lexical methods
 
-### 1) Flavor-specific parsing
+- [x] `is_absolute()`
+- [x] `is_relative_to()`
+- [x] `relative_to(walk_up=)`
+- [x] `joinpath()` + `/` operator
+- [x] `with_name()`, `with_stem()`, `with_suffix()`
+- [x] `as_posix()`
 
-Windows vs POSIX differences must match CPython:
+### Filesystem methods
 
-- Drive letters (`C:`), roots (`\\`), anchors.
-- UNC paths (`\\server\\share\\...`).
-- Verbatim paths (`\\?\\...`).
-- Separator normalization rules.
+- [x] `exists()`, `is_file()`, `is_dir()`, `is_symlink()`
+- [x] `stat()`, `lstat()`
+- [x] `absolute()`, `resolve(strict=)`, `readlink()`
+- [x] `mkdir(mode=, parents=, exist_ok=)`, `rmdir()`
+- [x] `iterdir()`, `glob()`, `rglob()`
+- [x] `touch(exist_ok=)`, `unlink(missing_ok=)`
+- [x] `rename()`, `replace()`
+- [x] `read_text(encoding=)`, `write_text(data, encoding=)`
+- [x] `read_bytes()`, `write_bytes()`
+- [x] `open(mode=, buffering=, encoding=, errors=, newline=)`
+- [x] `cwd()`, `home()`
 
-### 2) Lexical operations (PurePath)
+### Protocols
 
-Must match behaviors for:
+- [x] `__str__`, `__repr__`, `__fspath__`
+- [x] `__truediv__`, `__rtruediv__`
+- [x] `__hash__`, `__eq__`, `__ne__`
+- [x] `__lt__`, `__le__`, `__gt__`, `__ge__`
 
-- `.parts`, `.parent`, `.parents`
-- `.name`, `.suffix`, `.suffixes`, `.stem`
-- `.with_name()`, `.with_suffix()`
-- `.joinpath()` and operator `/` behavior (Python side)
-- `.relative_to()` and exceptions
-- `.is_absolute()`
+## Missing ❌
 
-### 3) Normalization and resolution
+### Pattern matching
 
-Operations that consult the filesystem must match:
+- [ ] `match(pattern)` - glob-style pattern match
+- [ ] `full_match(pattern)` - anchored pattern match
 
-- `.resolve()` semantics (including symlink resolution behavior).
-- Absolute path conversions.
+### Directory walking (Python 3.12+)
 
-Where CPython behavior differs by platform or version, we should:
+- [ ] `walk(top_down=, on_error=, follow_symlinks=)`
 
-- Match the current supported Python version behavior.
-- Document the behavior if exact equivalence is not possible.
+### Unix-specific
 
-### 4) Filesystem operations (Path)
+- [ ] `owner()`, `group()`
+- [ ] `is_mount()`
+- [ ] `is_block_device()`, `is_char_device()`, `is_fifo()`, `is_socket()`
+- [ ] `chmod()`, `lchmod()`
+- [ ] `symlink_to()`, `hardlink_to()`
 
-Must match:
+### Other
 
-- Existence and type checks: `.exists()`, `.is_file()`, `.is_dir()`, `.is_symlink()`, etc.
-- Directory iteration: `.iterdir()`
-- Reading/writing: `.read_text()`, `.read_bytes()`, `.write_text()`, `.write_bytes()`
-- Creation/removal: `.mkdir()`, `.touch()`, `.unlink()`, `.rmdir()`
-- Metadata: `.stat()`, `.lstat()`, `.owner()`, `.group()` (platform dependent)
-
-### 5) Globbing
-
-`pathlib` globbing semantics can be subtle.
-
-Must match:
-
-- `.glob()` and `.rglob()` patterns and edge-cases.
-- Hidden files rules (platform-dependent).
-- `**` behavior.
-
-### 6) Comparison and hashing
-
-Must match CPython rules:
-
-- Comparisons are flavor-aware.
-- Equality and ordering semantics.
-- Hashing stability.
-
-### 7) String representations
-
-Must match:
-
-- `str(path)`
-- `repr(path)`
-- `bytes(path)` where applicable
-- `path.as_posix()`
-
-### 8) Interop
-
-`pyopath` should interoperate with:
-
-- `os.fspath()`
-- `os.PathLike`
-- `pathlib.Path`
-
-When accepting inputs, `pyopath` should accept any `os.PathLike`.
-
-## Known hard areas
-
-The following areas are historically tricky and require explicit attention:
-
-- Windows normalization edge cases (UNC, verbatim, drive-relative vs absolute).
-- Non-UTF8 paths on POSIX.
-- Symlink resolution semantics.
-- Globbing corner cases.
-
-These areas should have dedicated test coverage.
+- [ ] `samefile(other)`
+- [ ] `expanduser()`
+- [ ] `is_reserved()` (Windows)

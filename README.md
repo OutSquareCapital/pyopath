@@ -1,69 +1,79 @@
-## pyopath
+# pyopath
 
-`pyopath` is a **full-compatibility clone of Python's `pathlib`** whose implementation lives in **Rust**, exposed to Python via **PyO3** and built with **maturin**.
+`pyopath` is a **full-compatibility clone of Python's `pathlib`** implemented in **Rust** via **PyO3**.
 
-The goal is to provide a drop-in developer experience close to the standard library `pathlib`, while enabling:
+Drop-in replacement for `pathlib` with better performance.
 
-- Higher performance for path operations and directory walking.
-- Predictable cross-platform semantics (Windows / POSIX).
-- A clean separation between **lexical path semantics** (PurePath) and **filesystem operations** (Path).
+## Installation
 
-This repository currently contains the project skeleton and documentation. Implementation is intentionally staged and tracked in the roadmap.
+```bash
+uv add pyopath
+```
 
-### Non-goals
+## Usage
 
-- Inventing a new API: compatibility and behavioral fidelity are prioritized.
+```python
+from pyopath import Path, PurePath
 
-## Status
+# Exactement comme pathlib
+p = Path("src/lib.rs")
+print(p.exists())        # True
+print(p.read_text()[:50])  # "//! pyopath..."
+print(p.suffix)          # ".rs"
+print(p.parent)          # src
 
-Design and planning phase.
+# Globbing
+for f in Path(".").glob("**/*.rs"):
+    print(f)
 
-## Project layout
+# Filesystem operations
+p = Path("test.txt")
+p.write_text("hello")
+p.unlink()
+```
 
-- `src/`: Rust source code (PyO3 extension module).
-- `pyopath.pyi`: Python type stubs for IDE support.
-- `docs/`: architecture, compatibility notes, and roadmap.
+## API
 
-## API surface
+### Classes
 
-Targeted public surface (mirrors `pathlib`):
+| Pure (lexical only) | Concrete (filesystem) |
+|---------------------|----------------------|
+| `PurePath` | `Path` |
+| `PurePosixPath` | `PosixPath` |
+| `PureWindowsPath` | `WindowsPath` |
 
-- `PurePath`, `PurePosixPath`, `PureWindowsPath`
-- `Path`, `PosixPath`, `WindowsPath`
+### Properties
 
-As in `pathlib`, `Path` is the platform-specific concrete class returned by `Path(...)`.
+`drive`, `root`, `anchor`, `parts`, `name`, `suffix`, `suffixes`, `stem`, `parent`, `parents`
+
+### Methods
+
+| Lexical | Filesystem |
+|---------|------------|
+| `is_absolute()` | `exists()`, `is_file()`, `is_dir()`, `is_symlink()` |
+| `is_relative_to()` | `stat()`, `lstat()` |
+| `relative_to()` | `absolute()`, `resolve()`, `readlink()` |
+| `joinpath()`, `/` operator | `mkdir()`, `rmdir()`, `iterdir()` |
+| `with_name()`, `with_stem()`, `with_suffix()` | `glob()`, `rglob()` |
+| `as_posix()` | `touch()`, `unlink()`, `rename()`, `replace()` |
+| | `read_text()`, `write_text()`, `read_bytes()`, `write_bytes()` |
+| | `open()`, `cwd()`, `home()` |
+
+## What's missing
+
+- `match()` / `full_match()` - glob pattern matching
+- `walk()` - recursive directory traversal (Python 3.12+)
+- `owner()` / `group()` - Unix-only metadata
+- `is_mount()`, `is_block_device()`, etc. - special Unix checks
 
 ## Development
 
-### Prerequisites
-
-- Windows supported (this repo is currently configured for Windows dev), with a Rust toolchain installed (`cargo`).
-- `uv` available (used instead of `pip` and `python`).
-- `maturin` available (can be installed via `uv` tooling or via `cargo`).
-
-### Build / develop
-
-During early development, the preferred workflow is an editable install into the `uv` environment:
-
 ```bash
-uv run maturin develop --release
+uv sync --reinstall  # Build and install
+uv run pytest        # Run tests
 ```
 
-Build wheels:
+## Links
 
-```bash
-uv run maturin build --release
-```
-
-Run tests:
-
-```bash
-uv run pytest
-```
-
-## Documentation
-
-- See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module design and boundaries.
-- See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the `pathlib` contract and tricky semantics.
-- See [docs/ROADMAP.md](docs/ROADMAP.md) for the execution plan toward a full clone.
-- See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for local dev, release, and CI guidance.
+- [pathlib documentation](https://docs.python.org/3/library/pathlib.html)
+- [PyO3](https://pyo3.rs/)
