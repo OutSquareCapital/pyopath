@@ -1,7 +1,7 @@
 //! Pure path implementations - lexical operations only, no filesystem access.
 
-mod flavor;
-mod parsing;
+pub mod flavor;
+pub mod parsing;
 mod pure_path;
 mod pure_posix_path;
 mod pure_windows_path;
