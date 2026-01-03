@@ -11,6 +11,7 @@
 
 [tool.maturin]
     features = ["pyo3/extension-module"]
+    profile  = "release"
 
 [dependency-groups]
     dev = [

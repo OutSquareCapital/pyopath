@@ -26,8 +26,6 @@ DF_SCHEMA = {
     "name": pl.String,
     "category": pl.Enum(Category),
     "iterations": pl.Int64,
-    "pyopath_us": pl.Float64,
-    "pathlib_us": pl.Float64,
     "speedup": pl.Float64,
     "faster": pl.String,
 }
@@ -43,7 +41,7 @@ class BenchmarkResult:
     pyopath_us: float
     pathlib_us: float
 
-    def to_row(self) -> tuple[str, Category, int, float, float, float, str]:
+    def to_row(self) -> tuple[str, Category, int, float, str]:
         """Convert to row tuple for polars."""
         speedup = self.pathlib_us / self.pyopath_us
         faster = "pyopath" if speedup > 1 else "pathlib"
@@ -51,8 +49,6 @@ class BenchmarkResult:
             self.name,
             self.category,
             self.iterations,
-            self.pyopath_us,
-            self.pathlib_us,
             speedup,
             faster,
         )
