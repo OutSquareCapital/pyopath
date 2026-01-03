@@ -51,12 +51,25 @@ impl PurePath {
             });
         }
 
+        // Special case: single PurePath argument - just clone it
+        if args.len() == 1 {
+            if let Ok(other_path) = args.get_item(0)?.extract::<Self>() {
+                return Ok(other_path.clone());
+            }
+        }
+
         let mut result = ParsedPath::parse("", flavor);
 
         for arg in args.iter() {
-            let path_str: String = arg.extract()?;
-            let other = ParsedPath::parse(&path_str, flavor);
-            result = result.join(&other, flavor);
+            // Fast path: if arg is already a PurePath, use its parsed directly
+            if let Ok(other_path) = arg.extract::<Self>() {
+                result.join_mut(&other_path.parsed, flavor);
+            } else {
+                // Fallback: extract as string and parse
+                let path_str: String = arg.extract()?;
+                let other = ParsedPath::parse(&path_str, flavor);
+                result.join_mut(&other, flavor);
+            }
         }
 
         Ok(Self {
@@ -226,7 +239,6 @@ impl PurePath {
                     drive: String::new(),
                     root: String::new(),
                     parts: new_parts,
-                    raw: String::new(),
                 },
                 flavor: self.flavor,
             })
@@ -247,7 +259,6 @@ impl PurePath {
                     drive: String::new(),
                     root: String::new(),
                     parts: new_parts,
-                    raw: String::new(),
                 },
                 flavor: self.flavor,
             })
@@ -259,9 +270,15 @@ impl PurePath {
         let mut result = self.parsed.clone();
 
         for arg in args.iter() {
-            let other_str: String = arg.extract()?;
-            let other_parsed = ParsedPath::parse(&other_str, self.flavor);
-            result = result.join(&other_parsed, self.flavor);
+            // Fast path: if arg is already a PurePath, use its parsed directly
+            if let Ok(other_path) = arg.extract::<Self>() {
+                result.join_mut(&other_path.parsed, self.flavor);
+            } else {
+                // Fallback: extract as string and parse
+                let other_str: String = arg.extract()?;
+                let other_parsed = ParsedPath::parse(&other_str, self.flavor);
+                result.join_mut(&other_parsed, self.flavor);
+            }
         }
 
         Ok(Self {
@@ -299,7 +316,6 @@ impl PurePath {
                 drive: self.parsed.drive.clone(),
                 root: self.parsed.root.clone(),
                 parts: new_parts,
-                raw: String::new(),
             },
             flavor: self.flavor,
         })

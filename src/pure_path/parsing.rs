@@ -11,29 +11,49 @@ pub struct ParsedPath {
     pub root: String,
     /// Path parts (directories and filename)
     pub parts: Vec<String>,
-    /// Original raw path for string representation
-    pub raw: String,
 }
 
 impl ParsedPath {
     /// Parse a path string according to the given flavor.
+    #[inline]
     pub fn parse(path: &str, flavor: PathFlavor) -> Self {
+        // Fast path for simple names (no separators, no drive letter)
+        // This is common in joinpath("foo", "bar")
+        if !path.is_empty() && Self::is_simple_name(path, flavor) {
+            return Self {
+                drive: String::new(),
+                root: String::new(),
+                parts: vec![path.to_string()],
+            };
+        }
+
         match flavor {
             PathFlavor::Posix => Self::parse_posix(path),
             PathFlavor::Windows => Self::parse_windows(path),
         }
     }
 
+    /// Check if path is a simple name (no separators, not special).
+    #[inline]
+    fn is_simple_name(path: &str, flavor: PathFlavor) -> bool {
+        if path == "." || path == ".." {
+            return false;
+        }
+        match flavor {
+            PathFlavor::Posix => !path.contains('/'),
+            PathFlavor::Windows => {
+                !path.contains('/') && !path.contains('\\') && !path.contains(':')
+            }
+        }
+    }
+
     /// Parse a POSIX path.
     fn parse_posix(path: &str) -> Self {
-        let raw = path.to_string();
-
         if path.is_empty() {
             return Self {
                 drive: String::new(),
                 root: String::new(),
                 parts: vec![],
-                raw,
             };
         }
 
@@ -61,20 +81,16 @@ impl ParsedPath {
             drive: String::new(),
             root,
             parts,
-            raw,
         }
     }
 
     /// Parse a Windows path.
     fn parse_windows(path: &str) -> Self {
-        let raw = path.to_string();
-
         if path.is_empty() {
             return Self {
                 drive: String::new(),
                 root: String::new(),
                 parts: vec![],
-                raw,
             };
         }
 
@@ -151,35 +167,40 @@ impl ParsedPath {
             .map(|s| s.to_string())
             .collect();
 
-        Self {
-            drive,
-            root,
-            parts,
-            raw,
-        }
+        Self { drive, root, parts }
     }
 
     /// Returns the anchor (drive + root).
+    #[inline]
     pub fn anchor(&self) -> String {
-        format!("{}{}", self.drive, self.root)
+        if self.drive.is_empty() && self.root.is_empty() {
+            String::new()
+        } else if self.drive.is_empty() {
+            self.root.clone()
+        } else if self.root.is_empty() {
+            self.drive.clone()
+        } else {
+            format!("{}{}", self.drive, self.root)
+        }
+    }
+
+    /// Check if anchor is empty without allocating.
+    #[inline]
+    pub fn has_anchor(&self) -> bool {
+        !self.drive.is_empty() || !self.root.is_empty()
     }
 
     /// Returns all parts including anchor as first element if present.
-    pub fn all_parts(&self, flavor: PathFlavor) -> Vec<String> {
-        let anchor = self.anchor();
-        let capacity = if anchor.is_empty() { 0 } else { 1 } + self.parts.len();
+    pub fn all_parts(&self, _flavor: PathFlavor) -> Vec<String> {
+        let has_anchor = self.has_anchor();
+        let capacity = if has_anchor { 1 } else { 0 } + self.parts.len();
         let mut result = Vec::with_capacity(capacity);
 
-        if !anchor.is_empty() {
-            result.push(anchor);
+        if has_anchor {
+            result.push(self.anchor());
         }
 
-        // On Windows, normalize separators; on POSIX, just clone
-        if flavor == PathFlavor::Windows {
-            result.extend(self.parts.iter().map(|s| s.replace('/', "\\")));
-        } else {
-            result.extend(self.parts.iter().cloned());
-        }
+        result.extend(self.parts.iter().cloned());
 
         result
     }
@@ -301,7 +322,6 @@ impl ParsedPath {
                 drive: self.drive.clone(),
                 root: other.root.clone(),
                 parts: other.parts.clone(),
-                raw: String::new(),
             };
         }
 
@@ -313,8 +333,36 @@ impl ParsedPath {
             drive: self.drive.clone(),
             root: self.root.clone(),
             parts: new_parts,
-            raw: String::new(),
         }
+    }
+
+    /// Join with another path in place (mutates self).
+    pub fn join_mut(&mut self, other: &ParsedPath, flavor: PathFlavor) {
+        // If other is absolute, it replaces self entirely
+        if other.is_absolute(flavor) {
+            self.drive = other.drive.clone();
+            self.root = other.root.clone();
+            self.parts = other.parts.clone();
+            return;
+        }
+
+        // On Windows, if other has a different drive, it replaces self
+        if flavor == PathFlavor::Windows && !other.drive.is_empty() && other.drive != self.drive {
+            self.drive = other.drive.clone();
+            self.root = other.root.clone();
+            self.parts = other.parts.clone();
+            return;
+        }
+
+        // On Windows, if other has a root (but no drive), keep self's drive
+        if flavor == PathFlavor::Windows && !other.root.is_empty() {
+            self.root = other.root.clone();
+            self.parts = other.parts.clone();
+            return;
+        }
+
+        // Otherwise, just extend parts
+        self.parts.extend(other.parts.iter().cloned());
     }
 
     /// Get the parent path.
@@ -331,7 +379,6 @@ impl ParsedPath {
             drive: self.drive.clone(),
             root: self.root.clone(),
             parts: new_parts,
-            raw: String::new(),
         }
     }
 
@@ -345,7 +392,6 @@ impl ParsedPath {
             drive: self.drive.to_lowercase(),
             root: self.root.clone(),
             parts: self.parts.iter().map(|s| s.to_lowercase()).collect(),
-            raw: self.raw.to_lowercase(),
         }
     }
 }

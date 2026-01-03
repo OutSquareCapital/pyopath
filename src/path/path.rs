@@ -347,48 +347,51 @@ impl Path {
 
     #[getter]
     fn drive(&self) -> &str {
-        self.inner.get_drive()
+        &self.inner.parsed.drive
     }
 
     #[getter]
     fn root(&self) -> &str {
-        self.inner.get_root()
+        &self.inner.parsed.root
     }
 
     #[getter]
     fn anchor(&self) -> String {
-        self.inner.get_anchor()
+        self.inner.parsed.anchor()
     }
 
     #[getter]
     fn parts(&self) -> Vec<String> {
-        self.inner.get_parts()
+        self.inner.parsed.all_parts(self.inner.flavor)
     }
 
     #[getter]
     fn name(&self) -> &str {
-        self.inner.get_name()
+        self.inner.parsed.name()
     }
 
     #[getter]
     fn suffix(&self) -> String {
-        self.inner.get_suffix()
+        self.inner.parsed.suffix()
     }
 
     #[getter]
     fn suffixes(&self) -> Vec<String> {
-        self.inner.get_suffixes()
+        self.inner.parsed.suffixes()
     }
 
     #[getter]
     fn stem(&self) -> String {
-        self.inner.get_stem()
+        self.inner.parsed.stem()
     }
 
     #[getter]
     fn parent(&self) -> Self {
         Self {
-            inner: self.inner.get_parent(),
+            inner: PurePath {
+                parsed: self.inner.parsed.parent(),
+                flavor: self.inner.flavor,
+            },
         }
     }
 
@@ -402,7 +405,7 @@ impl Path {
     }
 
     fn is_absolute(&self) -> bool {
-        self.inner.get_is_absolute()
+        self.inner.parsed.is_absolute(self.inner.flavor)
     }
 
     fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
@@ -460,7 +463,7 @@ impl Path {
     }
 
     fn as_posix(&self) -> String {
-        self.inner.get_as_posix()
+        self.inner.to_str().replace('\\', "/")
     }
 
     // ==================== Filesystem operations ====================
