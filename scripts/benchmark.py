@@ -13,6 +13,7 @@ import pyochain as pc
 import pyopath
 
 DATA = Path("scripts", "data")
+ITERATIONS = 1000
 
 
 class Category(StrEnum):
@@ -37,9 +38,9 @@ class BenchmarkResult:
 
     name: str
     category: Category
-    iterations: int
     pyopath_us: float
     pathlib_us: float
+    iterations: int = ITERATIONS
 
     def to_row(self) -> tuple[str, Category, int, float, str]:
         """Convert to row tuple for polars."""
@@ -59,18 +60,17 @@ def _compare(
     category: Category,
     pyopath_func: Callable[[], object],
     pathlib_func: Callable[[], object],
-    iterations: int = 10000,
 ) -> BenchmarkResult:
     """Compare pyopath and pathlib for a given operation."""
-    pyopath_s = timeit.timeit(pyopath_func, number=iterations)
-    pathlib_s = timeit.timeit(pathlib_func, number=iterations)
+    pyopath_s = timeit.timeit(pyopath_func, number=ITERATIONS)
+    pathlib_s = timeit.timeit(pathlib_func, number=ITERATIONS)
 
     return BenchmarkResult(
         name=name,
         category=category,
-        iterations=iterations,
-        pyopath_us=(pyopath_s * 1_000_000) / iterations,
-        pathlib_us=(pathlib_s * 1_000_000) / iterations,
+        iterations=ITERATIONS,
+        pyopath_us=(pyopath_s * 1_000_000) / ITERATIONS,
+        pathlib_us=(pathlib_s * 1_000_000) / ITERATIONS,
     )
 
 
@@ -81,7 +81,6 @@ def benchmark_pure_path_creation() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath.PurePath("/home/user/documents/file.txt"),
         lambda: pathlib.PurePath("/home/user/documents/file.txt"),
-        iterations=10000,
     )
 
 
@@ -95,7 +94,6 @@ def benchmark_path_parts() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_p.parts,
         lambda: pathlib_p.parts,
-        iterations=10000,
     )
 
 
@@ -109,7 +107,6 @@ def benchmark_joinpath() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_base.joinpath("documents", "file.txt"),
         lambda: pathlib_base.joinpath("documents", "file.txt"),
-        iterations=10000,
     )
 
 
@@ -125,7 +122,6 @@ def benchmark_joinpath_path() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_base.joinpath(pyopath_part),
         lambda: pathlib_base.joinpath(pathlib_part),
-        iterations=10000,
     )
 
 
@@ -139,7 +135,6 @@ def benchmark_parent_chain() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: list(pyopath_p.parents),
         lambda: list(pathlib_p.parents),
-        iterations=5000,
     )
 
 
@@ -153,7 +148,6 @@ def benchmark_with_suffix() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_p.with_suffix(".md"),
         lambda: pathlib_p.with_suffix(".md"),
-        iterations=10000,
     )
 
 
@@ -167,7 +161,6 @@ def benchmark_is_absolute() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_p.is_absolute(),
         lambda: pathlib_p.is_absolute(),
-        iterations=10000,
     )
 
 
@@ -182,7 +175,6 @@ def benchmark_file_read(tmp_path: str) -> BenchmarkResult:
         Category.FILESYSTEM,
         lambda: pyopath_p.read_text(),
         lambda: pathlib_p.read_text(),
-        iterations=10000,
     )
 
 
@@ -197,7 +189,6 @@ def benchmark_file_write(tmp_path: str) -> BenchmarkResult:
         Category.FILESYSTEM,
         lambda: pyopath_p.write_text(content),
         lambda: pathlib_p.write_text(content),
-        iterations=5000,
     )
 
 
@@ -211,7 +202,6 @@ def benchmark_exists(tmp_path: str) -> BenchmarkResult:
         Category.FILESYSTEM,
         lambda: pyopath_p.exists(),
         lambda: pathlib_p.exists(),
-        iterations=5000,
     )
 
 
@@ -230,7 +220,6 @@ def benchmark_glob(tmp_path: str) -> BenchmarkResult:
         Category.FILESYSTEM,
         lambda: list(pyopath_p.glob("*.txt")),
         lambda: list(pathlib_p.glob("*.txt")),
-        iterations=5000,
     )
 
 
@@ -244,7 +233,6 @@ def benchmark_iterdir(tmp_path: str) -> BenchmarkResult:
         Category.FILESYSTEM,
         lambda: list(pyopath_p.iterdir()),
         lambda: list(pathlib_p.iterdir()),
-        iterations=10000,
     )
 
 
