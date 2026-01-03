@@ -87,9 +87,7 @@ impl ParsedPath {
         let norm_ref = normalized.as_str();
 
         // Check for UNC path: \\server\share or \\?\... or \\.\...
-        if norm_ref.starts_with("\\\\") {
-            let after_slashes = &norm_ref[2..];
-
+        if let Some(after_slashes) = norm_ref.strip_prefix("\\\\") {
             // Handle \\?\ and \\.\ prefixes
             if after_slashes.starts_with("?\\") || after_slashes.starts_with(".\\") {
                 // Verbatim path - \\?\C:\... or \\.\device\...
@@ -137,18 +135,18 @@ impl ParsedPath {
             // Check for root after drive
             if remaining.starts_with('\\') || remaining.starts_with('/') {
                 root = "\\".to_string();
-                remaining = remaining.trim_start_matches(|c| c == '\\' || c == '/');
+                remaining = remaining.trim_start_matches(['\\', '/']);
             }
         }
         // Check for root without drive
         else if norm_ref.starts_with('\\') {
             root = "\\".to_string();
-            remaining = path.trim_start_matches(|c: char| c == '\\' || c == '/');
+            remaining = path.trim_start_matches(['\\', '/']);
         }
 
         // Split remaining path into parts
         let parts: Vec<String> = remaining
-            .split(|c| c == '\\' || c == '/')
+            .split(['\\', '/'])
             .filter(|s| !s.is_empty() && *s != ".")
             .map(|s| s.to_string())
             .collect();
@@ -169,17 +167,18 @@ impl ParsedPath {
     /// Returns all parts including anchor as first element if present.
     pub fn all_parts(&self, flavor: PathFlavor) -> Vec<String> {
         let anchor = self.anchor();
-        let mut result = Vec::new();
+        let capacity = if anchor.is_empty() { 0 } else { 1 } + self.parts.len();
+        let mut result = Vec::with_capacity(capacity);
 
         if !anchor.is_empty() {
             result.push(anchor);
         }
 
-        result.extend(self.parts.iter().cloned());
-
-        // Normalize separators for display
+        // On Windows, normalize separators; on POSIX, just clone
         if flavor == PathFlavor::Windows {
-            result = result.into_iter().map(|s| s.replace('/', "\\")).collect();
+            result.extend(self.parts.iter().map(|s| s.replace('/', "\\")));
+        } else {
+            result.extend(self.parts.iter().cloned());
         }
 
         result

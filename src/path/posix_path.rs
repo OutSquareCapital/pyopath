@@ -10,7 +10,7 @@ use crate::pure_path::flavor::PathFlavor;
 use crate::pure_path::parsing::ParsedPath;
 
 use super::path::{
-    Path, StatResult, path_absolute, path_cwd, path_exists, path_glob, path_home, path_is_dir,
+    StatResult, path_absolute, path_cwd, path_exists, path_glob, path_home, path_is_dir,
     path_is_file, path_is_symlink, path_iterdir, path_lstat, path_mkdir, path_read_bytes,
     path_read_text, path_readlink, path_rename, path_resolve, path_rglob, path_rmdir, path_stat,
     path_touch, path_unlink, path_write_bytes, path_write_text,

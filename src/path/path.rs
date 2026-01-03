@@ -5,7 +5,7 @@ use pyo3::types::{PyBytes, PyTuple};
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path as StdPath, PathBuf};
 
 use crate::pure_path::PurePath;
 use crate::pure_path::flavor::PathFlavor;
@@ -36,19 +36,19 @@ impl Hash for Path {
 
 // ==================== Helper functions for filesystem operations ====================
 
-pub(crate) fn path_exists(path: &PathBuf) -> bool {
+pub(crate) fn path_exists(path: &StdPath) -> bool {
     path.exists()
 }
 
-pub(crate) fn path_is_file(path: &PathBuf) -> bool {
+pub(crate) fn path_is_file(path: &StdPath) -> bool {
     path.is_file()
 }
 
-pub(crate) fn path_is_dir(path: &PathBuf) -> bool {
+pub(crate) fn path_is_dir(path: &StdPath) -> bool {
     path.is_dir()
 }
 
-pub(crate) fn path_is_symlink(path: &PathBuf) -> bool {
+pub(crate) fn path_is_symlink(path: &StdPath) -> bool {
     path.is_symlink()
 }
 
@@ -200,6 +200,12 @@ pub(crate) fn path_iterdir(path: &PathBuf) -> PyResult<Vec<PathBuf>> {
 }
 
 pub(crate) fn path_glob(base: &PathBuf, pattern: &str) -> PyResult<Vec<PathBuf>> {
+    // For simple patterns without ** or complex globs, use fast path
+    if !pattern.contains("**") && !pattern.contains('[') && !pattern.contains('{') {
+        return path_glob_simple(base, pattern);
+    }
+
+    // Fall back to glob crate for complex patterns
     let full_pattern = base.join(pattern);
     let pattern_str = full_pattern.to_string_lossy();
 
@@ -215,10 +221,77 @@ pub(crate) fn path_glob(base: &PathBuf, pattern: &str) -> PyResult<Vec<PathBuf>>
     Ok(result)
 }
 
-pub(crate) fn path_rglob(base: &PathBuf, pattern: &str) -> PyResult<Vec<PathBuf>> {
-    let full_pattern = base.join("**").join(pattern);
-    let pattern_str = full_pattern.to_string_lossy();
+/// Fast glob for simple patterns like "*.txt" or "file?.py"
+fn path_glob_simple(base: &PathBuf, pattern: &str) -> PyResult<Vec<PathBuf>> {
+    let entries =
+        fs::read_dir(base).map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
 
+    let mut result = Vec::new();
+
+    for entry in entries {
+        let entry = entry.map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
+        let file_name = entry.file_name();
+        let name = file_name.to_string_lossy();
+
+        if fnmatch_simple(pattern, &name) {
+            result.push(entry.path());
+        }
+    }
+
+    Ok(result)
+}
+
+/// Simple fnmatch implementation for * and ? wildcards
+fn fnmatch_simple(pattern: &str, name: &str) -> bool {
+    let mut p_chars = pattern.chars().peekable();
+    let mut n_chars = name.chars().peekable();
+
+    while let Some(p) = p_chars.next() {
+        match p {
+            '*' => {
+                // Skip consecutive *
+                while p_chars.peek() == Some(&'*') {
+                    p_chars.next();
+                }
+
+                // * at end matches everything
+                if p_chars.peek().is_none() {
+                    return true;
+                }
+
+                // Try matching rest of pattern at each position
+                let remaining_pattern: String = p_chars.collect();
+                while n_chars.peek().is_some() {
+                    let remaining_name: String = n_chars.clone().collect();
+                    if fnmatch_simple(&remaining_pattern, &remaining_name) {
+                        return true;
+                    }
+                    n_chars.next();
+                }
+                return fnmatch_simple(&remaining_pattern, "");
+            }
+            '?' => {
+                // ? matches exactly one character
+                if n_chars.next().is_none() {
+                    return false;
+                }
+            }
+            c => {
+                // Literal character must match
+                if n_chars.next() != Some(c) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    // Pattern exhausted, name must also be exhausted
+    n_chars.peek().is_none()
+}
+
+pub(crate) fn path_rglob(base: &StdPath, pattern: &str) -> PyResult<Vec<PathBuf>> {
+    let pattern_path = base.join("**").join(pattern);
+    let pattern_str = pattern_path.to_string_lossy();
     let mut result = Vec::new();
     for entry in glob::glob(&pattern_str)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
