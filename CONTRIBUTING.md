@@ -16,10 +16,12 @@ Re-install the package
 uv sync --reinstall
 ```
 
-Run tests
+Run tests.
+Stubtester will run the doctests in the pyi file.
 
 ```bash
 uv run pytest tests
+uv run stubtester pyopath.pyi
 ```
 
 Run benchmarks
@@ -27,3 +29,7 @@ Run benchmarks
 ```bash
 uv run python scripts/benchmark.py
 ```
+
+## Reference
+
+the folder reference contains the vanilla python pathlib implementation, for a reference of how the library should behave and/or be implemented.

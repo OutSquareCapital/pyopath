@@ -19,7 +19,8 @@
         "polars>=1.36.1",
         "pyochain>=0.6.1.51",
         "pytest>=8.0",
-    ]
+        "stubtester",
+]
 
 [tool.ruff]
     lint.ignore = [
@@ -44,5 +45,8 @@
     lint.select = ["ALL"]
     [tool.ruff.format]
         docstring-code-format = true
+
+[tool.uv.sources]
+stubtester = { git = "https://github.com/OutSquareCapital/stubtester.git" }
     [tool.ruff.lint.pydocstyle]
         convention = "google"
