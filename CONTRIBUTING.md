@@ -4,13 +4,16 @@ Thank you for your interest in contributing to PyOPath! We welcome contributions
 
 ## How to Contribute
 
+The project is managed with uv for all tasks, including rust toolchain management.
+Once modifications are done:
+
 Run cargo clippy at the root
 
 ```bash
 uv run cargo clippy
 ```
 
-Re-install the package
+Re-install the package (uv run maturin won't update the binary in the venv)
 
 ```bash
 uv sync --reinstall
