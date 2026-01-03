@@ -17,9 +17,14 @@ impl ParsedPath {
     /// Parse a path string according to the given flavor.
     #[inline]
     pub fn parse(path: &str, flavor: PathFlavor) -> Self {
+        // Fast path for empty
+        if path.is_empty() {
+            return Self::default();
+        }
+
         // Fast path for simple names (no separators, no drive letter)
         // This is common in joinpath("foo", "bar")
-        if !path.is_empty() && Self::is_simple_name(path, flavor) {
+        if Self::is_simple_name(path, flavor) {
             return Self {
                 drive: String::new(),
                 root: String::new(),
@@ -98,9 +103,14 @@ impl ParsedPath {
         let mut root = String::new();
         let mut remaining = path;
 
-        // Normalize separators for parsing
-        let normalized: String = path.replace('/', "\\");
-        let norm_ref = normalized.as_str();
+        // Check if path needs normalization (contains '/')
+        let normalized: String;
+        let norm_ref = if path.contains('/') {
+            normalized = path.replace('/', "\\");
+            normalized.as_str()
+        } else {
+            path
+        };
 
         // Check for UNC path: \\server\share or \\?\... or \\.\...
         if let Some(after_slashes) = norm_ref.strip_prefix("\\\\") {

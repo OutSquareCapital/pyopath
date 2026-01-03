@@ -3,6 +3,7 @@
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 use std::hash::{Hash, Hasher};
+use std::sync::OnceLock;
 
 use super::flavor::PathFlavor;
 use super::parsing::ParsedPath;
@@ -11,10 +12,15 @@ use super::parsing::ParsedPath;
 /// On Windows, behaves like PureWindowsPath.
 /// On POSIX, behaves like PurePosixPath.
 #[pyclass(frozen)]
-#[derive(Clone)]
 pub struct PurePath {
     pub(crate) parsed: ParsedPath,
     pub(crate) flavor: PathFlavor,
+    /// Cached string representation
+    str_cache: OnceLock<String>,
+    /// Cached all_parts (anchor + parts)
+    parts_cache: OnceLock<Vec<String>>,
+    /// Cached hash value
+    hash_cache: OnceLock<u64>,
 }
 
 impl PartialEq for PurePath {
@@ -42,19 +48,32 @@ impl Hash for PurePath {
 }
 
 impl PurePath {
+    /// Helper to create a new PurePath with empty caches
+    #[inline]
+    pub fn new_with_parsed(parsed: ParsedPath, flavor: PathFlavor) -> Self {
+        Self {
+            parsed,
+            flavor,
+            str_cache: OnceLock::new(),
+            parts_cache: OnceLock::new(),
+            hash_cache: OnceLock::new(),
+        }
+    }
+
     /// Create from args with a specific flavor.
     pub fn from_args_with_flavor(args: &Bound<'_, PyTuple>, flavor: PathFlavor) -> PyResult<Self> {
         if args.is_empty() {
-            return Ok(Self {
-                parsed: ParsedPath::parse("", flavor),
-                flavor,
-            });
+            return Ok(Self::new_with_parsed(ParsedPath::parse("", flavor), flavor));
         }
 
-        // Special case: single PurePath argument - just clone it
+        // Special case: single PurePath argument - reuse its parsed data
         if args.len() == 1 {
-            if let Ok(other_path) = args.get_item(0)?.extract::<Self>() {
-                return Ok(other_path.clone());
+            if let Ok(other_bound) = args.get_item(0)?.cast::<Self>() {
+                let other_path = other_bound.borrow();
+                return Ok(Self::new_with_parsed(
+                    other_path.parsed.clone(),
+                    other_path.flavor,
+                ));
             }
         }
 
@@ -62,7 +81,8 @@ impl PurePath {
 
         for arg in args.iter() {
             // Fast path: if arg is already a PurePath, use its parsed directly
-            if let Ok(other_path) = arg.extract::<Self>() {
+            if let Ok(other_bound) = arg.cast::<Self>() {
+                let other_path = other_bound.borrow();
                 result.join_mut(&other_path.parsed, flavor);
             } else {
                 // Fallback: extract as string and parse
@@ -72,10 +92,7 @@ impl PurePath {
             }
         }
 
-        Ok(Self {
-            parsed: result,
-            flavor,
-        })
+        Ok(Self::new_with_parsed(result, flavor))
     }
 
     /// Get drive (public for reuse).
@@ -93,9 +110,11 @@ impl PurePath {
         self.parsed.anchor()
     }
 
-    /// Get parts (public for reuse).
-    pub fn get_parts(&self) -> Vec<String> {
-        self.parsed.all_parts(self.flavor)
+    /// Get parts (public for reuse) - cached.
+    /// Returns a reference to avoid cloning.
+    pub fn get_parts(&self) -> &Vec<String> {
+        self.parts_cache
+            .get_or_init(|| self.parsed.all_parts(self.flavor))
     }
 
     /// Get name (public for reuse).
@@ -120,10 +139,7 @@ impl PurePath {
 
     /// Get parent (public for reuse).
     pub fn get_parent(&self) -> Self {
-        Self {
-            parsed: self.parsed.parent(),
-            flavor: self.flavor,
-        }
+        Self::new_with_parsed(self.parsed.parent(), self.flavor)
     }
 
     /// Get parents (public for reuse).
@@ -132,10 +148,7 @@ impl PurePath {
         let mut current = self.parsed.parent();
 
         loop {
-            let parent_path = Self {
-                parsed: current.clone(),
-                flavor: self.flavor,
-            };
+            let parent_path = Self::new_with_parsed(current.clone(), self.flavor);
 
             // Stop if we've reached empty path (no drive, no root, no parts)
             if current.parts.is_empty() && current.root.is_empty() && current.drive.is_empty() {
@@ -187,9 +200,11 @@ impl PurePath {
         self_folded.parts.starts_with(&other_folded.parts)
     }
 
-    /// Get string representation (public for reuse).
+    /// Get string representation (public for reuse) - cached.
     pub fn to_str(&self) -> String {
-        self.parsed.to_string(self.flavor)
+        self.str_cache
+            .get_or_init(|| self.parsed.to_string(self.flavor))
+            .clone()
     }
 
     /// Get as_posix representation (public for reuse).
@@ -208,10 +223,7 @@ impl PurePath {
         let self_folded = self.parsed.case_fold(self.flavor);
         let other_folded = other.parsed.case_fold(other.flavor);
 
-        let self_anchor = self_folded.anchor();
-        let other_anchor = other_folded.anchor();
-
-        if self_anchor != other_anchor {
+        if self_folded.anchor() != other_folded.anchor() {
             let msg = format!(
                 "'{}' is not in the subpath of '{}' OR one path is relative and the other is absolute.",
                 self.to_str(),
@@ -234,14 +246,14 @@ impl PurePath {
             let mut new_parts: Vec<String> = (0..ups).map(|_| "..".to_string()).collect();
             new_parts.extend(self.parsed.parts[common_len..].iter().cloned());
 
-            Ok(Self {
-                parsed: ParsedPath {
+            Ok(Self::new_with_parsed(
+                ParsedPath {
                     drive: String::new(),
                     root: String::new(),
                     parts: new_parts,
                 },
-                flavor: self.flavor,
-            })
+                self.flavor,
+            ))
         } else {
             if !self_folded.parts.starts_with(&other_folded.parts) {
                 let msg = format!(
@@ -254,14 +266,14 @@ impl PurePath {
 
             let new_parts = self.parsed.parts[other_folded.parts.len()..].to_vec();
 
-            Ok(Self {
-                parsed: ParsedPath {
+            Ok(Self::new_with_parsed(
+                ParsedPath {
                     drive: String::new(),
                     root: String::new(),
                     parts: new_parts,
                 },
-                flavor: self.flavor,
-            })
+                self.flavor,
+            ))
         }
     }
 
@@ -271,7 +283,8 @@ impl PurePath {
 
         for arg in args.iter() {
             // Fast path: if arg is already a PurePath, use its parsed directly
-            if let Ok(other_path) = arg.extract::<Self>() {
+            if let Ok(other_bound) = arg.cast::<Self>() {
+                let other_path = other_bound.borrow();
                 result.join_mut(&other_path.parsed, self.flavor);
             } else {
                 // Fallback: extract as string and parse
@@ -281,10 +294,7 @@ impl PurePath {
             }
         }
 
-        Ok(Self {
-            parsed: result,
-            flavor: self.flavor,
-        })
+        Ok(Self::new_with_parsed(result, self.flavor))
     }
 
     /// Compute with_name (public for reuse).
@@ -311,14 +321,14 @@ impl PurePath {
             *last = name.to_string();
         }
 
-        Ok(Self {
-            parsed: ParsedPath {
+        Ok(Self::new_with_parsed(
+            ParsedPath {
                 drive: self.parsed.drive.clone(),
                 root: self.parsed.root.clone(),
                 parts: new_parts,
             },
-            flavor: self.flavor,
-        })
+            self.flavor,
+        ))
     }
 
     /// Compute with_stem (public for reuse).
@@ -413,8 +423,9 @@ impl PurePath {
     }
 
     #[getter]
-    fn parts(&self) -> Vec<String> {
-        self.get_parts()
+    fn parts<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
+        let parts = self.get_parts();
+        Ok(PyTuple::new(py, parts.iter().map(|s| s.as_str()))?)
     }
 
     #[getter]
@@ -452,28 +463,22 @@ impl PurePath {
     }
 
     fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
-        let other_path = if let Ok(p) = other.extract::<Self>() {
-            p
+        let other_path = if let Ok(p) = other.cast::<Self>() {
+            Self::new_with_parsed(p.borrow().parsed.clone(), p.borrow().flavor)
         } else {
             let s: String = other.extract()?;
-            Self {
-                parsed: ParsedPath::parse(&s, self.flavor),
-                flavor: self.flavor,
-            }
+            Self::new_with_parsed(ParsedPath::parse(&s, self.flavor), self.flavor)
         };
         Ok(self.get_is_relative_to(&other_path))
     }
 
     #[pyo3(signature = (other, walk_up=false))]
     fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
-        let other_path = if let Ok(p) = other.extract::<Self>() {
-            p
+        let other_path = if let Ok(p) = other.cast::<Self>() {
+            Self::new_with_parsed(p.borrow().parsed.clone(), p.borrow().flavor)
         } else {
             let s: String = other.extract()?;
-            Self {
-                parsed: ParsedPath::parse(&s, self.flavor),
-                flavor: self.flavor,
-            }
+            Self::new_with_parsed(ParsedPath::parse(&s, self.flavor), self.flavor)
         };
         self.compute_relative_to(&other_path, walk_up)
     }
@@ -515,27 +520,22 @@ impl PurePath {
         let other_str: String = other.extract()?;
         let other_parsed = ParsedPath::parse(&other_str, self.flavor);
         let result = self.parsed.join(&other_parsed, self.flavor);
-        Ok(Self {
-            parsed: result,
-            flavor: self.flavor,
-        })
+        Ok(Self::new_with_parsed(result, self.flavor))
     }
 
     fn __rtruediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other_str: String = other.extract()?;
-        let other_parsed = ParsedPath::parse(&other_str, self.flavor);
-        let result = other_parsed.join(&self.parsed, self.flavor);
-        Ok(Self {
-            parsed: result,
-            flavor: self.flavor,
-        })
+        let result = ParsedPath::parse(&other_str, self.flavor).join(&self.parsed, self.flavor);
+        Ok(Self::new_with_parsed(result, self.flavor))
     }
 
     fn __hash__(&self) -> u64 {
-        use std::collections::hash_map::DefaultHasher;
-        let mut hasher = DefaultHasher::new();
-        Hash::hash(self, &mut hasher);
-        hasher.finish()
+        *self.hash_cache.get_or_init(|| {
+            use std::collections::hash_map::DefaultHasher;
+            let mut hasher = DefaultHasher::new();
+            Hash::hash(self, &mut hasher);
+            hasher.finish()
+        })
     }
 
     fn __eq__(&self, other: &Self) -> bool {

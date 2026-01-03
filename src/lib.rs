@@ -5,6 +5,7 @@ use pyo3::prelude::*;
 #[macro_use]
 mod macros;
 mod flavor;
+mod glob_iter;
 mod parsing;
 mod path;
 mod pure_path;

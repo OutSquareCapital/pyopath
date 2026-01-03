@@ -1,5 +1,27 @@
 //! Macros for reducing code duplication across path types.
 
+/// Macro to generate a PyClass wrapper for GlobIterator for a specific path type
+#[macro_export]
+macro_rules! impl_glob_iterator {
+    ($iter_name:ident, $path_type:ty) => {
+        #[pyclass]
+        pub struct $iter_name {
+            inner: crate::glob_iter::GlobIteratorInner<$path_type>,
+        }
+
+        #[pymethods]
+        impl $iter_name {
+            fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+                slf
+            }
+
+            fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<$path_type>> {
+                slf.inner.next_path()
+            }
+        }
+    };
+}
+
 /// Generate common pure path Python methods (getters and methods).
 /// This macro generates all the #[pymethods] for pure path types.
 #[macro_export]
@@ -30,8 +52,12 @@ macro_rules! impl_pure_path_methods {
             }
 
             #[getter]
-            fn parts(&self) -> Vec<String> {
-                self.inner.get_parts()
+            fn parts<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyTuple>> {
+                let parts = self.inner.get_parts();
+                Ok(pyo3::types::PyTuple::new(
+                    py,
+                    parts.iter().map(|s| s.as_str()),
+                )?)
             }
 
             #[getter]
@@ -75,28 +101,34 @@ macro_rules! impl_pure_path_methods {
             }
 
             fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
-                let other_path = if let Ok(p) = other.extract::<Self>() {
-                    p.inner
+                let other_path = if let Ok(p) = other.cast::<Self>() {
+                    PurePath::new_with_parsed(
+                        p.borrow().inner.parsed.clone(),
+                        p.borrow().inner.flavor,
+                    )
                 } else {
                     let s: String = other.extract()?;
-                    PurePath {
-                        parsed: ParsedPath::parse(&s, self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    }
+                    PurePath::new_with_parsed(
+                        ParsedPath::parse(&s, self.inner.flavor),
+                        self.inner.flavor,
+                    )
                 };
                 Ok(self.inner.get_is_relative_to(&other_path))
             }
 
             #[pyo3(signature = (other, walk_up=false))]
             fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
-                let other_path = if let Ok(p) = other.extract::<Self>() {
-                    p.inner
+                let other_path = if let Ok(p) = other.cast::<Self>() {
+                    PurePath::new_with_parsed(
+                        p.borrow().inner.parsed.clone(),
+                        p.borrow().inner.flavor,
+                    )
                 } else {
                     let s: String = other.extract()?;
-                    PurePath {
-                        parsed: ParsedPath::parse(&s, self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    }
+                    PurePath::new_with_parsed(
+                        ParsedPath::parse(&s, self.inner.flavor),
+                        self.inner.flavor,
+                    )
                 };
                 Ok(Self {
                     inner: self.inner.compute_relative_to(&other_path, walk_up)?,
@@ -147,13 +179,12 @@ macro_rules! impl_pure_path_methods {
             fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
                 let other_str: String = other.extract()?;
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: self
-                            .inner
+                    inner: PurePath::new_with_parsed(
+                        self.inner
                             .parsed
                             .join(&ParsedPath::parse(&other_str, $flavor), $flavor),
-                        flavor: $flavor,
-                    },
+                        $flavor,
+                    ),
                 })
             }
 
@@ -161,10 +192,10 @@ macro_rules! impl_pure_path_methods {
                 let other_str: String = other.extract()?;
                 let other_parsed = ParsedPath::parse(&other_str, $flavor);
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: other_parsed.join(&self.inner.parsed, $flavor),
-                        flavor: $flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        other_parsed.join(&self.inner.parsed, $flavor),
+                        $flavor,
+                    ),
                 })
             }
 
@@ -205,7 +236,7 @@ macro_rules! impl_pure_path_methods {
 /// Generate filesystem methods for concrete path types.
 #[macro_export]
 macro_rules! impl_concrete_path_methods {
-    ($type:ty, $flavor:expr, $repr_name:literal) => {
+    ($type:ty, $flavor:expr, $repr_name:literal, $glob_iter:ident) => {
         impl $type {
             fn to_pathbuf(&self) -> PathBuf {
                 PathBuf::from(self.inner.to_str())
@@ -239,8 +270,12 @@ macro_rules! impl_concrete_path_methods {
             }
 
             #[getter]
-            fn parts(&self) -> Vec<String> {
-                self.inner.get_parts()
+            fn parts<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyTuple>> {
+                let parts = self.inner.get_parts();
+                Ok(pyo3::types::PyTuple::new(
+                    py,
+                    parts.iter().map(|s| s.as_str()),
+                )?)
             }
 
             #[getter]
@@ -284,28 +319,34 @@ macro_rules! impl_concrete_path_methods {
             }
 
             fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
-                let other_path = if let Ok(p) = other.extract::<Self>() {
-                    p.inner
+                let other_path = if let Ok(p) = other.cast::<Self>() {
+                    PurePath::new_with_parsed(
+                        p.borrow().inner.parsed.clone(),
+                        p.borrow().inner.flavor,
+                    )
                 } else {
                     let s: String = other.extract()?;
-                    PurePath {
-                        parsed: ParsedPath::parse(&s, self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    }
+                    PurePath::new_with_parsed(
+                        ParsedPath::parse(&s, self.inner.flavor),
+                        self.inner.flavor,
+                    )
                 };
                 Ok(self.inner.get_is_relative_to(&other_path))
             }
 
             #[pyo3(signature = (other, walk_up=false))]
             fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
-                let other_path = if let Ok(p) = other.extract::<Self>() {
-                    p.inner
+                let other_path = if let Ok(p) = other.cast::<Self>() {
+                    PurePath::new_with_parsed(
+                        p.borrow().inner.parsed.clone(),
+                        p.borrow().inner.flavor,
+                    )
                 } else {
                     let s: String = other.extract()?;
-                    PurePath {
-                        parsed: ParsedPath::parse(&s, self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    }
+                    PurePath::new_with_parsed(
+                        ParsedPath::parse(&s, self.inner.flavor),
+                        self.inner.flavor,
+                    )
                 };
                 Ok(Self {
                     inner: self.inner.compute_relative_to(&other_path, walk_up)?,
@@ -369,10 +410,10 @@ macro_rules! impl_concrete_path_methods {
                         .map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?
                 };
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: ParsedPath::parse(&abs.to_string_lossy(), self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        ParsedPath::parse(&abs.to_string_lossy(), self.inner.flavor),
+                        self.inner.flavor,
+                    ),
                 })
             }
 
@@ -390,10 +431,10 @@ macro_rules! impl_concrete_path_methods {
                     })
                 };
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: ParsedPath::parse(&resolved.to_string_lossy(), self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        ParsedPath::parse(&resolved.to_string_lossy(), self.inner.flavor),
+                        self.inner.flavor,
+                    ),
                 })
             }
 
@@ -401,10 +442,10 @@ macro_rules! impl_concrete_path_methods {
                 let target = std::fs::read_link(self.to_pathbuf())
                     .map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: ParsedPath::parse(&target.to_string_lossy(), self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        ParsedPath::parse(&target.to_string_lossy(), self.inner.flavor),
+                        self.inner.flavor,
+                    ),
                 })
             }
 
@@ -459,13 +500,23 @@ macro_rules! impl_concrete_path_methods {
             fn rename(&self, target: &Self) -> PyResult<Self> {
                 std::fs::rename(self.to_pathbuf(), target.to_pathbuf())
                     .map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
-                Ok(target.clone())
+                Ok(Self {
+                    inner: PurePath::new_with_parsed(
+                        target.inner.parsed.clone(),
+                        target.inner.flavor,
+                    ),
+                })
             }
 
             fn replace(&self, target: &Self) -> PyResult<Self> {
                 std::fs::rename(self.to_pathbuf(), target.to_pathbuf())
                     .map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
-                Ok(target.clone())
+                Ok(Self {
+                    inner: PurePath::new_with_parsed(
+                        target.inner.parsed.clone(),
+                        target.inner.flavor,
+                    ),
+                })
             }
 
             #[pyo3(signature = (exist_ok=true))]
@@ -541,64 +592,35 @@ macro_rules! impl_concrete_path_methods {
                     let entry =
                         entry.map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
                     result.push(Self {
-                        inner: PurePath {
-                            parsed: ParsedPath::parse(
-                                &entry.path().to_string_lossy(),
-                                self.inner.flavor,
-                            ),
-                            flavor: self.inner.flavor,
-                        },
+                        inner: PurePath::new_with_parsed(
+                            ParsedPath::parse(&entry.path().to_string_lossy(), self.inner.flavor),
+                            self.inner.flavor,
+                        ),
                     });
                 }
                 Ok(result)
             }
 
-            fn glob(&self, pattern: &str) -> PyResult<Vec<Self>> {
+            fn glob(&self, pattern: &str) -> PyResult<$glob_iter> {
                 let base = self.to_pathbuf();
                 let full_pattern = base.join(pattern);
                 let pattern_str = full_pattern.to_string_lossy();
-                let mut result = Vec::new();
-                for entry in glob::glob(&pattern_str)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
-                {
-                    match entry {
-                        Ok(path) => result.push(Self {
-                            inner: PurePath {
-                                parsed: ParsedPath::parse(
-                                    &path.to_string_lossy(),
-                                    self.inner.flavor,
-                                ),
-                                flavor: self.inner.flavor,
-                            },
-                        }),
-                        Err(e) => return Err(pyo3::exceptions::PyOSError::new_err(e.to_string())),
-                    }
-                }
-                Ok(result)
+
+                let inner =
+                    crate::glob_iter::GlobIteratorInner::new(&pattern_str, self.inner.flavor)?;
+
+                Ok($glob_iter { inner })
             }
 
-            fn rglob(&self, pattern: &str) -> PyResult<Vec<Self>> {
+            fn rglob(&self, pattern: &str) -> PyResult<$glob_iter> {
                 let base = self.to_pathbuf();
                 let full_pattern = base.join("**").join(pattern);
                 let pattern_str = full_pattern.to_string_lossy();
-                let mut result = Vec::new();
-                for entry in glob::glob(&pattern_str)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
-                {
-                    match entry {
-                        Ok(path) => result.push(Self {
-                            inner: PurePath {
-                                parsed: ParsedPath::parse(
-                                    &path.to_string_lossy(),
-                                    self.inner.flavor,
-                                ),
-                                flavor: self.inner.flavor,
-                            },
-                        }),
-                        Err(e) => return Err(pyo3::exceptions::PyOSError::new_err(e.to_string())),
-                    }
-                }
-                Ok(result)
+
+                let inner =
+                    crate::glob_iter::GlobIteratorInner::new(&pattern_str, self.inner.flavor)?;
+
+                Ok($glob_iter { inner })
             }
 
             #[pyo3(signature = (mode="r", buffering=-1, encoding=None, errors=None, newline=None))]
@@ -628,10 +650,10 @@ macro_rules! impl_concrete_path_methods {
                 let cwd = std::env::current_dir()
                     .map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?;
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: ParsedPath::parse(&cwd.to_string_lossy(), $flavor),
-                        flavor: $flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        ParsedPath::parse(&cwd.to_string_lossy(), $flavor),
+                        $flavor,
+                    ),
                 })
             }
 
@@ -641,10 +663,10 @@ macro_rules! impl_concrete_path_methods {
                     pyo3::exceptions::PyRuntimeError::new_err("Could not determine home directory")
                 })?;
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: ParsedPath::parse(&home.to_string_lossy(), $flavor),
-                        flavor: $flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        ParsedPath::parse(&home.to_string_lossy(), $flavor),
+                        $flavor,
+                    ),
                 })
             }
 
@@ -666,10 +688,10 @@ macro_rules! impl_concrete_path_methods {
                 let other_str: String = other.extract()?;
                 let other_parsed = ParsedPath::parse(&other_str, self.inner.flavor);
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: self.inner.parsed.join(&other_parsed, self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        self.inner.parsed.join(&other_parsed, self.inner.flavor),
+                        self.inner.flavor,
+                    ),
                 })
             }
 
@@ -677,10 +699,10 @@ macro_rules! impl_concrete_path_methods {
                 let other_str: String = other.extract()?;
                 let other_parsed = ParsedPath::parse(&other_str, self.inner.flavor);
                 Ok(Self {
-                    inner: PurePath {
-                        parsed: other_parsed.join(&self.inner.parsed, self.inner.flavor),
-                        flavor: self.inner.flavor,
-                    },
+                    inner: PurePath::new_with_parsed(
+                        other_parsed.join(&self.inner.parsed, self.inner.flavor),
+                        self.inner.flavor,
+                    ),
                 })
             }
 
