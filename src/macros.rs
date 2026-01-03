@@ -603,22 +603,21 @@ macro_rules! impl_concrete_path_methods {
 
             fn glob(&self, pattern: &str) -> PyResult<$glob_iter> {
                 let base = self.to_pathbuf();
-                let full_pattern = base.join(pattern);
-                let pattern_str = full_pattern.to_string_lossy();
 
                 let inner =
-                    crate::glob_iter::GlobIteratorInner::new(&pattern_str, self.inner.flavor)?;
+                    crate::glob_iter::GlobIteratorInner::new(base, pattern, self.inner.flavor)?;
 
                 Ok($glob_iter { inner })
             }
 
             fn rglob(&self, pattern: &str) -> PyResult<$glob_iter> {
                 let base = self.to_pathbuf();
-                let full_pattern = base.join("**").join(pattern);
-                let pattern_str = full_pattern.to_string_lossy();
 
-                let inner =
-                    crate::glob_iter::GlobIteratorInner::new(&pattern_str, self.inner.flavor)?;
+                let inner = crate::glob_iter::GlobIteratorInner::new(
+                    base,
+                    &format!("**/{}", pattern),
+                    self.inner.flavor,
+                )?;
 
                 Ok($glob_iter { inner })
             }
