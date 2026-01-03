@@ -2,6 +2,7 @@
 
 import pathlib
 from dataclasses import dataclass
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import Literal, Self
 
@@ -10,35 +11,6 @@ import pyochain as pc
 import pyopath
 
 DATA = Path("scripts", "data")
-Library = Literal["pathlib", "pyopath", "default"]
-MemberType = Literal["method", "staticmethod", "classmethod", "property", "default"]
-
-
-@dataclass(slots=True)
-class Member:
-    """Represents a class member with its source library."""
-
-    class_name: str
-    name: str
-    member_type: MemberType = "default"
-    source: Library = "default"
-
-    def with_type(self, obj: object) -> Self:
-        """Return a Member with the given type based on the object."""
-        type_name = type(obj).__name__
-        if isinstance(obj, property) or type_name == "getset_descriptor":
-            self.member_type = "property"
-        if isinstance(obj, staticmethod):
-            self.member_type = "staticmethod"
-        if isinstance(obj, classmethod):
-            self.member_type = "classmethod"
-        self.member_type = "method"
-        return self
-
-    def with_source(self, src: Library) -> Self:
-        """Return a Member with the given source library."""
-        self.source = src
-        return self
 
 
 def _pathlib_classes() -> pc.Set[type]:
@@ -69,36 +41,62 @@ def _pyopath_classes() -> pc.Set[type]:
     )
 
 
-def build_comparison_df(
-    pathlib_classes: pc.Set[type], pyopath_classes: pc.Set[type]
-) -> pl.LazyFrame:
-    """Build a LazyFrame comparing pathlib and pyopath members."""
-    member: pl.Expr = pl.col("member")
+class Library(StrEnum):
+    """Enumeration of source libraries."""
 
-    return (
-        pathlib_classes.iter()
-        .flat_map(
-            lambda cls: _extract_members(cls).map(lambda t: t.with_source("pathlib"))
-        )
-        .chain(
-            pyopath_classes.iter().flat_map(
-                lambda cls: _extract_members(cls).map(
-                    lambda t: t.with_source("pyopath")
-                )
-            )
-        )
-        .into(lambda x: pl.LazyFrame(x, schema=["source", "class", "member", "type"]))
-        .filter(member.str.starts_with("_").not_())
-        .unique(subset=["source", "class", "member"])
-        .sort(["class", "member", "source"])
-    )
+    PATHLIB = auto()
+    PYOPATH = auto()
+    DEFAULT = auto()
+
+
+class MemberType(StrEnum):
+    """Enumeration of member types."""
+
+    METHOD = auto()
+    STATICMETHOD = auto()
+    CLASSMETHOD = auto()
+    PROPERTY = auto()
+    DEFAULT = auto()
+
+
+DF_SCHEMA = {
+    "source": pl.Enum(Library),
+    "class": pl.Enum(_pyopath_classes().iter().map(lambda x: x.__name__).sort()),
+    "member": pl.String,
+    "type": pl.Enum(MemberType),
+}
+
+
+@dataclass(slots=True)
+class Member:
+    """Represents a class member with its source library."""
+
+    source: Library = Library.DEFAULT
+    class_name: str = ""
+    name: str = ""
+    member_type: MemberType = MemberType.DEFAULT
+
+    def with_type(self, obj: object) -> Self:
+        """Return a Member with the given type based on the object."""
+        type_name = type(obj).__name__
+        if isinstance(obj, property) or type_name == "getset_descriptor":
+            self.member_type = MemberType.PROPERTY
+        elif isinstance(obj, staticmethod):
+            self.member_type = MemberType.STATICMETHOD
+        elif isinstance(obj, classmethod):
+            self.member_type = MemberType.CLASSMETHOD
+        else:
+            self.member_type = MemberType.METHOD
+        return self
+
+    def with_source(self, src: Library) -> Self:
+        """Return a Member with the given source library."""
+        self.source = src
+        return self
 
 
 def _extract_members(cls: type) -> pc.Iter[Member]:
-    """Extract all public members from a class with their type."""
-
     def _is_callable_or_property(obj: object) -> bool:
-        """Check if object is callable, staticmethod, classmethod, property, or PyO3 descriptor."""
         return (
             callable(obj)
             or isinstance(obj, (staticmethod, classmethod, property))
@@ -110,14 +108,47 @@ def _extract_members(cls: type) -> pc.Iter[Member]:
         .take_while(lambda x: x is not object)
         .flat_map(lambda x: x.__dict__.items())
         .filter(lambda kv: _is_callable_or_property(kv[1]))
-        .map(lambda kv: Member(cls.__name__, kv[0]).with_type(kv[1]))
+        .map(lambda kv: Member(class_name=cls.__name__, name=kv[0]).with_type(kv[1]))
     )
+
+
+def _save_and_report(df: pl.LazyFrame) -> None:
+    def _show_if_exist(df: pl.DataFrame, kword: Literal["MISSING", "EXTRA"]) -> None:
+        if df.height > 0:
+            print("\n" + "-" * 60)
+            print(f"{kword} IN PYOPATH (not in pathlib):")
+            print("-" * 60)
+            return (
+                pc.Iter(df.iter_rows(named=True))
+                .group_by(lambda x: x["class"])
+                .for_each(
+                    lambda group: print(
+                        f"\n{group.key}:\n"
+                        + group.values.map(
+                            lambda x: f"  - {x['member']} ({x['type']})"
+                        ).join("\n")
+                    )
+                )
+            )
+        return None
+
+    # Find and save missing members (in pathlib but not pyopath)
+    missing_df = _extra_or_missing(df.clone(), Library.PATHLIB, Library.PYOPATH)
+    missing_df.clone().sink_ndjson(DATA.joinpath("missing_in_pyopath.ndjson"))
+
+    # Find and save extra members (in pyopath but not pathlib)
+    extra_df = _extra_or_missing(df.clone(), Library.PYOPATH, Library.PATHLIB)
+    extra_df.clone().sink_ndjson(DATA.joinpath("extra_in_pyopath.ndjson"))
+    print("=" * 60)
+    print("PYOPATH COMPATIBILITY REPORT")
+    print("=" * 60)
+    missing_df.collect().pipe(_show_if_exist, "MISSING")
+    extra_df.collect().pipe(_show_if_exist, "EXTRA")
 
 
 def _extra_or_missing(
     df: pl.LazyFrame, is_in: Library, is_not_in: Library
 ) -> pl.LazyFrame:
-    """Find members that exist in pathlib but not in pyopath."""
     return (
         df.group_by("class", "member")
         .agg(
@@ -137,64 +168,29 @@ def _extra_or_missing(
 def main() -> None:
     """Run the comparison and output the results."""
     DATA.mkdir(parents=True, exist_ok=True)
-
-    comparison_df = build_comparison_df(_pathlib_classes(), _pyopath_classes())
-
-    # Find and save missing members (in pathlib but not pyopath)
-    missing_df = _extra_or_missing(comparison_df.clone(), "pathlib", "pyopath")
-    missing_df.clone().sink_ndjson(DATA.joinpath("missing_in_pyopath.ndjson"))
-
-    # Find and save extra members (in pyopath but not pathlib)
-    extra_df = _extra_or_missing(comparison_df.clone(), "pyopath", "pathlib")
-    extra_df.clone().sink_ndjson(DATA.joinpath("extra_in_pyopath.ndjson"))
-
-    # Print summary
-    missing_collected = missing_df.collect()
-    extra_collected = extra_df.collect()
-
-    print("=" * 60)
-    print("PYOPATH COMPATIBILITY REPORT")
-    print("=" * 60)
-    print(f"❌ Missing:     {missing_collected.height} members")
-    print(f"++ Extra:       {extra_collected.height} members")
-
-    if missing_collected.height > 0:
-        print("\n" + "-" * 60)
-        print("MISSING IN PYOPATH (by class):")
-        print("-" * 60)
-        (
-            pc.Iter(missing_collected.iter_rows(named=True))
-            .group_by(lambda x: x["class"])
-            .for_each(
-                lambda group: print(
-                    f"\n{group.key}:\n"
-                    + group.values.map(
-                        lambda x: f"  - {x['member']} ({x['type']})"
-                    ).join("\n")
+    return (
+        _pathlib_classes()
+        .iter()
+        .flat_map(
+            lambda cls: _extract_members(cls).map(
+                lambda t: t.with_source(Library.PATHLIB)
+            )
+        )
+        .chain(
+            _pyopath_classes()
+            .iter()
+            .flat_map(
+                lambda cls: _extract_members(cls).map(
+                    lambda t: t.with_source(Library.PYOPATH)
                 )
             )
         )
-
-    if extra_collected.height > 0:
-        print("\n" + "-" * 60)
-        print("EXTRA IN PYOPATH (not in pathlib):")
-        print("-" * 60)
-        (
-            pc.Iter(extra_collected.iter_rows(named=True))
-            .group_by(lambda x: x["class"])
-            .for_each(
-                lambda group: print(
-                    f"\n{group.key}:\n"
-                    + group.values.map(
-                        lambda x: f"  - {x['member']} ({x['type']})"
-                    ).join("\n")
-                )
-            )
-        )
-
-    print("\n" + "=" * 60)
-    print(f"Files written to: {DATA.resolve()}")
-    print("=" * 60)
+        .into(lambda x: pl.LazyFrame(x, schema=DF_SCHEMA))
+        .filter(pl.col("member").str.starts_with("_").not_())
+        .unique(subset=["source", "class", "member"])
+        .sort(["class", "member", "source"])
+        .pipe(_save_and_report)
+    )
 
 
 if __name__ == "__main__":
