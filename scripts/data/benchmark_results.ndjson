@@ -1,0 +1,11 @@
+{"name":"is_absolute","category":"pure_path","iterations":100000,"pyopath_us":0.1446839999698568,"pathlib_us":0.9335030000511324,"speedup":6.45,"faster":"pyopath"}
+{"name":"with_suffix","category":"pure_path","iterations":100000,"pyopath_us":0.8100510000076611,"pathlib_us":2.601571999985026,"speedup":3.21,"faster":"pyopath"}
+{"name":"parents traversal","category":"pure_path","iterations":50000,"pyopath_us":10.433217999961926,"pathlib_us":24.485770000028424,"speedup":2.35,"faster":"pyopath"}
+{"name":"read_text (1KB)","category":"filesystem","iterations":10000,"pyopath_us":78.84598000018741,"pathlib_us":109.33191000003717,"speedup":1.39,"faster":"pyopath"}
+{"name":"write_text (1KB)","category":"filesystem","iterations":5000,"pyopath_us":330.16787999949884,"pathlib_us":407.6145799990627,"speedup":1.23,"faster":"pyopath"}
+{"name":"iterdir","category":"filesystem","iterations":10000,"pyopath_us":117.20987000007881,"pathlib_us":117.99000000028173,"speedup":1.01,"faster":"pyopath"}
+{"name":"exists","category":"filesystem","iterations":50000,"pyopath_us":51.157641999889165,"pathlib_us":42.64949999997043,"speedup":0.83,"faster":"pathlib"}
+{"name":"joinpath","category":"pure_path","iterations":100000,"pyopath_us":2.228289999984554,"pathlib_us":1.8376069999794709,"speedup":0.82,"faster":"pathlib"}
+{"name":"PurePath creation","category":"pure_path","iterations":100000,"pyopath_us":1.2127190000319388,"pathlib_us":0.9666680000373162,"speedup":0.8,"faster":"pathlib"}
+{"name":"parts property","category":"pure_path","iterations":100000,"pyopath_us":1.397244000036153,"pathlib_us":0.4790109999885317,"speedup":0.34,"faster":"pathlib"}
+{"name":"glob *.txt","category":"filesystem","iterations":5000,"pyopath_us":771.0918800003128,"pathlib_us":137.33835999883013,"speedup":0.18,"faster":"pathlib"}
