@@ -1,11 +1,12 @@
-{"name":"is_absolute","category":"pure_path","iterations":100000,"speedup":13.03,"faster":"pyopath"}
-{"name":"with_suffix","category":"pure_path","iterations":100000,"speedup":3.82,"faster":"pyopath"}
-{"name":"parents traversal","category":"pure_path","iterations":50000,"speedup":2.18,"faster":"pyopath"}
-{"name":"read_text (1KB)","category":"filesystem","iterations":10000,"speedup":1.39,"faster":"pyopath"}
-{"name":"write_text (1KB)","category":"filesystem","iterations":5000,"speedup":1.14,"faster":"pyopath"}
-{"name":"iterdir","category":"filesystem","iterations":10000,"speedup":1.04,"faster":"pyopath"}
-{"name":"glob *.txt","category":"filesystem","iterations":5000,"speedup":0.96,"faster":"pathlib"}
-{"name":"PurePath creation","category":"pure_path","iterations":100000,"speedup":0.87,"faster":"pathlib"}
-{"name":"joinpath","category":"pure_path","iterations":100000,"speedup":0.83,"faster":"pathlib"}
-{"name":"exists","category":"filesystem","iterations":50000,"speedup":0.8,"faster":"pathlib"}
-{"name":"parts property","category":"pure_path","iterations":100000,"speedup":0.5,"faster":"pathlib"}
+{"name":"is_absolute","category":"pure_path","iterations":100000,"speedup":10.04,"faster":"pyopath"}
+{"name":"with_suffix","category":"pure_path","iterations":100000,"speedup":3.25,"faster":"pyopath"}
+{"name":"parents traversal","category":"pure_path","iterations":50000,"speedup":2.6,"faster":"pyopath"}
+{"name":"joinpath (Path)","category":"pure_path","iterations":100000,"speedup":1.41,"faster":"pyopath"}
+{"name":"joinpath (str)","category":"pure_path","iterations":100000,"speedup":1.4,"faster":"pyopath"}
+{"name":"read_text (1KB)","category":"filesystem","iterations":10000,"speedup":1.33,"faster":"pyopath"}
+{"name":"write_text (1KB)","category":"filesystem","iterations":5000,"speedup":1.18,"faster":"pyopath"}
+{"name":"iterdir","category":"filesystem","iterations":10000,"speedup":1.0,"faster":"pyopath"}
+{"name":"glob *.txt","category":"filesystem","iterations":5000,"speedup":0.97,"faster":"pathlib"}
+{"name":"exists","category":"filesystem","iterations":50000,"speedup":0.83,"faster":"pathlib"}
+{"name":"PurePath creation","category":"pure_path","iterations":100000,"speedup":0.76,"faster":"pathlib"}
+{"name":"parts property","category":"pure_path","iterations":100000,"speedup":0.58,"faster":"pathlib"}

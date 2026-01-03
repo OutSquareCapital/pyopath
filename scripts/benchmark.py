@@ -105,10 +105,26 @@ def benchmark_joinpath() -> BenchmarkResult:
     pathlib_base = pathlib.PurePath("/home/user")
 
     return _compare(
-        "joinpath",
+        "joinpath (str)",
         Category.PURE_PATH,
         lambda: pyopath_base.joinpath("documents", "file.txt"),
         lambda: pathlib_base.joinpath("documents", "file.txt"),
+        iterations=100000,
+    )
+
+
+def benchmark_joinpath_path() -> BenchmarkResult:
+    """Benchmark joinpath with Path objects (no re-parsing needed)."""
+    pyopath_base = pyopath.PurePath("/home/user")
+    pathlib_base = pathlib.PurePath("/home/user")
+    pyopath_part = pyopath.PurePath("documents/file.txt")
+    pathlib_part = pathlib.PurePath("documents/file.txt")
+
+    return _compare(
+        "joinpath (Path)",
+        Category.PURE_PATH,
+        lambda: pyopath_base.joinpath(pyopath_part),
+        lambda: pathlib_base.joinpath(pathlib_part),
         iterations=100000,
     )
 
@@ -242,6 +258,7 @@ def _collect_all_benchmarks() -> pc.Vec[BenchmarkResult]:
             benchmark_pure_path_creation(),
             benchmark_path_parts(),
             benchmark_joinpath(),
+            benchmark_joinpath_path(),
             benchmark_parent_chain(),
             benchmark_with_suffix(),
             benchmark_is_absolute(),
