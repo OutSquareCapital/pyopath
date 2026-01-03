@@ -1,12 +1,12 @@
-{"name":"is_absolute","category":"pure_path","iterations":100000,"speedup":6.8,"faster":"pyopath"}
-{"name":"with_suffix","category":"pure_path","iterations":100000,"speedup":3.48,"faster":"pyopath"}
-{"name":"parents traversal","category":"pure_path","iterations":50000,"speedup":2.27,"faster":"pyopath"}
-{"name":"joinpath (Path)","category":"pure_path","iterations":100000,"speedup":1.64,"faster":"pyopath"}
-{"name":"parts property","category":"pure_path","iterations":100000,"speedup":1.6,"faster":"pyopath"}
-{"name":"read_text (1KB)","category":"filesystem","iterations":10000,"speedup":1.34,"faster":"pyopath"}
-{"name":"joinpath (str)","category":"pure_path","iterations":100000,"speedup":1.23,"faster":"pyopath"}
-{"name":"write_text (1KB)","category":"filesystem","iterations":5000,"speedup":1.17,"faster":"pyopath"}
-{"name":"glob *.txt","category":"filesystem","iterations":5000,"speedup":1.07,"faster":"pyopath"}
-{"name":"iterdir","category":"filesystem","iterations":10000,"speedup":1.07,"faster":"pyopath"}
-{"name":"exists","category":"filesystem","iterations":50000,"speedup":0.89,"faster":"pathlib"}
-{"name":"PurePath creation","category":"pure_path","iterations":100000,"speedup":0.83,"faster":"pathlib"}
+{"name":"is_absolute","category":"pure_path","iterations":10000,"speedup":8.38,"faster":"pyopath"}
+{"name":"with_suffix","category":"pure_path","iterations":10000,"speedup":3.71,"faster":"pyopath"}
+{"name":"joinpath (str)","category":"pure_path","iterations":10000,"speedup":2.15,"faster":"pyopath"}
+{"name":"joinpath (Path)","category":"pure_path","iterations":10000,"speedup":2.12,"faster":"pyopath"}
+{"name":"parents traversal","category":"pure_path","iterations":5000,"speedup":1.94,"faster":"pyopath"}
+{"name":"parts property","category":"pure_path","iterations":10000,"speedup":1.49,"faster":"pyopath"}
+{"name":"read_text (1KB)","category":"filesystem","iterations":10000,"speedup":1.39,"faster":"pyopath"}
+{"name":"write_text (1KB)","category":"filesystem","iterations":5000,"speedup":1.21,"faster":"pyopath"}
+{"name":"iterdir","category":"filesystem","iterations":10000,"speedup":1.11,"faster":"pyopath"}
+{"name":"PurePath creation","category":"pure_path","iterations":10000,"speedup":0.94,"faster":"pathlib"}
+{"name":"exists","category":"filesystem","iterations":5000,"speedup":0.86,"faster":"pathlib"}
+{"name":"glob *.txt","category":"filesystem","iterations":5000,"speedup":0.46,"faster":"pathlib"}

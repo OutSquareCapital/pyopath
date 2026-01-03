@@ -1,195 +1,155 @@
-//! Glob iterator for lazy path yielding.
+//! Glob iterator using walkdir and globset.
 
 use crate::flavor::PathFlavor;
 use crate::pure_path::PurePath;
+use globset::{GlobBuilder, GlobMatcher};
 use pyo3::prelude::*;
 use std::path::PathBuf;
-
-use std::fs;
-
-/// Trait for types that can be created from a PurePath
-
-/// Simple glob pattern matching
-pub struct GlobPattern {
-    pattern: String,
-    #[allow(dead_code)]
-    is_recursive: bool,
-}
-
-impl GlobPattern {
-    pub fn new(pattern: &str) -> Self {
-        let is_recursive = pattern.contains("**");
-        Self {
-            pattern: pattern.to_string(),
-            is_recursive,
-        }
-    }
-
-    /// Check if a filename matches the pattern
-    pub fn matches(&self, name: &str) -> bool {
-        // Simple implementation for now - just handle * wildcard
-        if self.pattern == "*" {
-            return true;
-        }
-
-        // Handle *.ext pattern
-        if let Some(stripped) = self.pattern.strip_prefix("*.") {
-            return name.ends_with(&format!(".{}", stripped));
-        }
-
-        // Handle *suffix pattern
-        if let Some(suffix) = self.pattern.strip_prefix('*') {
-            return name.ends_with(suffix);
-        }
-
-        // Handle prefix* pattern
-        if let Some(prefix) = self.pattern.strip_suffix('*') {
-            return name.starts_with(prefix);
-        }
-
-        // Exact match
-        name == self.pattern
-    }
-}
-
-/// Iterator over glob results using std::fs::read_dir
-pub struct FastGlobIter {
-    pattern: GlobPattern,
-    current_dirs: Vec<PathBuf>,
-    current_entries: Option<fs::ReadDir>,
-}
-
-impl FastGlobIter {
-    pub fn new(dir: PathBuf, pattern: &str) -> PyResult<Self> {
-        let pattern_obj = GlobPattern::new(pattern);
-
-        // For recursive patterns, start with base dir in queue
-        let current_dirs = if pattern_obj.is_recursive {
-            vec![dir.clone()]
-        } else {
-            vec![]
-        };
-
-        // For non-recursive, read immediately
-        let current_entries = if !pattern_obj.is_recursive {
-            Some(
-                fs::read_dir(&dir)
-                    .map_err(|e| pyo3::exceptions::PyOSError::new_err(e.to_string()))?,
-            )
-        } else {
-            None
-        };
-
-        Ok(Self {
-            pattern: pattern_obj,
-            current_dirs,
-            current_entries,
-        })
-    }
-
-    fn extract_final_pattern(&self) -> &str {
-        // For **/*.txt, extract *.txt
-        if let Some(pos) = self.pattern.pattern.rfind("**/") {
-            &self.pattern.pattern[pos + 3..]
-        } else {
-            &self.pattern.pattern
-        }
-    }
-}
-
-impl Iterator for FastGlobIter {
-    type Item = PyResult<PathBuf>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            // If we have current entries, process them
-            if let Some(entries) = self.current_entries.as_mut() {
-                match entries.next() {
-                    Some(Ok(entry)) => {
-                        let path = entry.path();
-
-                        // If recursive, add subdirectories to queue
-                        if self.pattern.is_recursive {
-                            if let Ok(metadata) = entry.metadata() {
-                                if metadata.is_dir() {
-                                    self.current_dirs.push(path.clone());
-                                }
-                            }
-                        }
-
-                        // Check if filename matches
-                        if let Some(name) = entry.file_name().to_str() {
-                            let final_pattern = self.extract_final_pattern();
-                            if GlobPattern::new(final_pattern).matches(name) {
-                                return Some(Ok(path));
-                            }
-                        }
-                        // Continue loop if pattern doesn't match
-                    }
-                    Some(Err(e)) => {
-                        return Some(Err(pyo3::exceptions::PyOSError::new_err(e.to_string())));
-                    }
-                    None => {
-                        // Current directory exhausted
-                        self.current_entries = None;
-                    }
-                }
-            } else if !self.current_dirs.is_empty() {
-                // Get next directory to process
-                let next_dir = self.current_dirs.remove(0);
-                match fs::read_dir(&next_dir) {
-                    Ok(read_dir) => {
-                        self.current_entries = Some(read_dir);
-                    }
-                    Err(_) => {
-                        // Skip directories we can't read
-                        continue;
-                    }
-                }
-            } else {
-                // No more entries and no more directories
-                return None;
-            }
-        }
-    }
-}
+use walkdir::WalkDir;
 
 pub trait FromPurePath {
     fn from_pure_path(pure: PurePath) -> Self;
 }
 
-/// Internal generic iterator for glob results
-/// T must implement FromPurePath
+/// Iterator over glob results
 pub struct GlobIteratorInner<T: FromPurePath> {
-    glob_iter: FastGlobIter,
-    /// The flavor to use for parsing paths
+    iter: walkdir::IntoIter,
+    matcher: GlobMatcher,
+    base_dir: PathBuf,
     flavor: PathFlavor,
-    /// Phantom data for the path type
     _marker: std::marker::PhantomData<T>,
 }
 
 impl<T: FromPurePath> GlobIteratorInner<T> {
-    pub fn new(base_dir: PathBuf, pattern: &str, flavor: PathFlavor) -> PyResult<Self> {
-        let glob_iter = FastGlobIter::new(base_dir, pattern)?;
+    pub fn new(
+        base_dir: PathBuf,
+        pattern: &str,
+        flavor: PathFlavor,
+        case_sensitive: Option<bool>,
+        follow_symlinks: Option<bool>,
+    ) -> PyResult<Self> {
+        let cs = case_sensitive.unwrap_or_else(|| match flavor {
+            PathFlavor::Windows => false,
+            PathFlavor::Posix => true,
+        });
+        let follow = follow_symlinks.unwrap_or(true);
+
+        // 1. Split pattern into static prefix and glob pattern
+        let (prefix, glob_pattern) = split_pattern(pattern, flavor);
+
+        // 2. Resolve starting directory
+        let start_dir = if prefix.is_empty() {
+            base_dir.clone()
+        } else {
+            base_dir.join(prefix)
+        };
+
+        // 3. Build GlobMatcher
+        let glob = GlobBuilder::new(&glob_pattern)
+            .case_insensitive(!cs)
+            .literal_separator(true)
+            .backslash_escape(true)
+            .build()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        let matcher = glob.compile_matcher();
+
+        // 4. Configure WalkDir
+        let is_recursive_pattern = glob_pattern.contains("**");
+        let max_depth = if is_recursive_pattern {
+            usize::MAX
+        } else {
+            count_components(&glob_pattern, flavor)
+        };
+
+        let walker = WalkDir::new(&start_dir)
+            .follow_links(follow)
+            .max_depth(max_depth)
+            .into_iter();
 
         Ok(Self {
-            glob_iter,
+            iter: walker,
+            matcher,
+            base_dir: start_dir,
             flavor,
             _marker: std::marker::PhantomData,
         })
     }
 
-    /// Get next path from the iterator
     pub fn next_path(&mut self) -> PyResult<Option<T>> {
-        match self.glob_iter.next() {
-            Some(Ok(path)) => {
-                let path_str = path.to_string_lossy();
-                let parsed = crate::parsing::ParsedPath::parse(&path_str, self.flavor);
-                let pure_path = PurePath::new_with_parsed(parsed, self.flavor);
-                Ok(Some(T::from_pure_path(pure_path)))
+        loop {
+            match self.iter.next() {
+                Some(Ok(entry)) => {
+                    let path = entry.path();
+
+                    if let Ok(stripped) = path.strip_prefix(&self.base_dir) {
+                        if self.matcher.is_match(stripped) {
+                            let path_str = path.to_string_lossy();
+                            let parsed = crate::parsing::ParsedPath::parse(&path_str, self.flavor);
+                            let pure_path = PurePath::new_with_parsed(parsed, self.flavor);
+                            return Ok(Some(T::from_pure_path(pure_path)));
+                        }
+                    }
+                }
+                Some(Err(_)) => {
+                    // Ignore errors (like permission denied) to match pathlib behavior
+                    continue;
+                }
+                None => return Ok(None),
             }
-            Some(Err(e)) => Err(e),
-            None => Ok(None),
         }
     }
+}
+
+fn is_magic(s: &str) -> bool {
+    s.contains('*') || s.contains('?') || s.contains('[')
+}
+
+fn split_pattern(pattern: &str, flavor: PathFlavor) -> (String, String) {
+    let sep = flavor.sep();
+    let altsep = flavor.altsep();
+
+    let mut parts = Vec::new();
+    let mut current_part = String::new();
+
+    for c in pattern.chars() {
+        if c == sep || altsep.is_some_and(|a| c == a) {
+            parts.push(current_part);
+            current_part = String::new();
+        } else {
+            current_part.push(c);
+        }
+    }
+    parts.push(current_part);
+
+    let mut split_idx = parts.len();
+    for (i, part) in parts.iter().enumerate() {
+        if is_magic(part) {
+            split_idx = i;
+            break;
+        }
+    }
+
+    let prefix_parts = &parts[..split_idx];
+    let glob_parts = &parts[split_idx..];
+
+    let prefix = prefix_parts.join(&sep.to_string());
+    let glob = glob_parts.join(&sep.to_string());
+
+    (prefix, glob)
+}
+
+fn count_components(pattern: &str, flavor: PathFlavor) -> usize {
+    let sep = flavor.sep();
+    let altsep = flavor.altsep();
+    let mut count = 1;
+    if pattern.is_empty() {
+        return 0;
+    }
+
+    for c in pattern.chars() {
+        if c == sep || altsep.is_some_and(|a| c == a) {
+            count += 1;
+        }
+    }
+    count
 }

@@ -81,7 +81,7 @@ def benchmark_pure_path_creation() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath.PurePath("/home/user/documents/file.txt"),
         lambda: pathlib.PurePath("/home/user/documents/file.txt"),
-        iterations=100000,
+        iterations=10000,
     )
 
 
@@ -95,7 +95,7 @@ def benchmark_path_parts() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_p.parts,
         lambda: pathlib_p.parts,
-        iterations=100000,
+        iterations=10000,
     )
 
 
@@ -109,7 +109,7 @@ def benchmark_joinpath() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_base.joinpath("documents", "file.txt"),
         lambda: pathlib_base.joinpath("documents", "file.txt"),
-        iterations=100000,
+        iterations=10000,
     )
 
 
@@ -125,7 +125,7 @@ def benchmark_joinpath_path() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_base.joinpath(pyopath_part),
         lambda: pathlib_base.joinpath(pathlib_part),
-        iterations=100000,
+        iterations=10000,
     )
 
 
@@ -139,7 +139,7 @@ def benchmark_parent_chain() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: list(pyopath_p.parents),
         lambda: list(pathlib_p.parents),
-        iterations=50000,
+        iterations=5000,
     )
 
 
@@ -153,7 +153,7 @@ def benchmark_with_suffix() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_p.with_suffix(".md"),
         lambda: pathlib_p.with_suffix(".md"),
-        iterations=100000,
+        iterations=10000,
     )
 
 
@@ -167,7 +167,7 @@ def benchmark_is_absolute() -> BenchmarkResult:
         Category.PURE_PATH,
         lambda: pyopath_p.is_absolute(),
         lambda: pathlib_p.is_absolute(),
-        iterations=100000,
+        iterations=10000,
     )
 
 
@@ -211,7 +211,7 @@ def benchmark_exists(tmp_path: str) -> BenchmarkResult:
         Category.FILESYSTEM,
         lambda: pyopath_p.exists(),
         lambda: pathlib_p.exists(),
-        iterations=50000,
+        iterations=5000,
     )
 
 

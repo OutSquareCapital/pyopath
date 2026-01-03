@@ -263,6 +263,12 @@ macro_rules! impl_concrete_path_methods {
             #[new]
             #[pyo3(signature = (*args))]
             fn new(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
+                if $flavor != crate::flavor::PathFlavor::current() {
+                    return Err(pyo3::exceptions::PyNotImplementedError::new_err(format!(
+                        "cannot instantiate '{}' on your system",
+                        $repr_name
+                    )));
+                }
                 let inner = PurePath::from_args_with_flavor(args, $flavor)?;
                 Ok(Self { inner })
             }
@@ -616,22 +622,41 @@ macro_rules! impl_concrete_path_methods {
                 Ok(result)
             }
 
-            fn glob(&self, pattern: &str) -> PyResult<$glob_iter> {
+            #[pyo3(signature = (pattern, *, case_sensitive=None, follow_symlinks=None))]
+            fn glob(
+                &self,
+                pattern: &str,
+                case_sensitive: Option<bool>,
+                follow_symlinks: Option<bool>,
+            ) -> PyResult<$glob_iter> {
                 let base = self.to_pathbuf();
 
-                let inner =
-                    crate::glob_iter::GlobIteratorInner::new(base, pattern, self.inner.flavor)?;
+                let inner = crate::glob_iter::GlobIteratorInner::new(
+                    base,
+                    pattern,
+                    self.inner.flavor,
+                    case_sensitive,
+                    follow_symlinks,
+                )?;
 
                 Ok($glob_iter { inner })
             }
 
-            fn rglob(&self, pattern: &str) -> PyResult<$glob_iter> {
+            #[pyo3(signature = (pattern, *, case_sensitive=None, follow_symlinks=None))]
+            fn rglob(
+                &self,
+                pattern: &str,
+                case_sensitive: Option<bool>,
+                follow_symlinks: Option<bool>,
+            ) -> PyResult<$glob_iter> {
                 let base = self.to_pathbuf();
 
                 let inner = crate::glob_iter::GlobIteratorInner::new(
                     base,
                     &format!("**/{}", pattern),
                     self.inner.flavor,
+                    case_sensitive,
+                    follow_symlinks,
                 )?;
 
                 Ok($glob_iter { inner })
