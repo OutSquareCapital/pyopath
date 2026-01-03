@@ -2,11 +2,15 @@
 
 use pyo3::prelude::*;
 
+#[macro_use]
+mod macros;
+mod flavor;
+mod parsing;
 mod path;
 mod pure_path;
-
-use path::{Path, PosixPath, WindowsPath};
-use pure_path::{PurePath, PurePosixPath, PureWindowsPath};
+mod stats;
+use path::{Path, PosixPath, PurePosixPath, PureWindowsPath, WindowsPath};
+use pure_path::PurePath;
 
 /// A full-compatibility clone of Python's pathlib implemented in Rust.
 #[pymodule]
@@ -17,10 +21,10 @@ mod pyopath {
     use super::PurePath;
 
     #[pymodule_export]
-    use super::PurePosixPath;
+    use PurePosixPath;
 
     #[pymodule_export]
-    use super::PureWindowsPath;
+    use PureWindowsPath;
 
     #[pymodule_export]
     use super::Path;
