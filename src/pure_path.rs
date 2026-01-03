@@ -95,46 +95,11 @@ impl PurePath {
         Ok(Self::new_with_parsed(result, flavor))
     }
 
-    /// Get drive (public for reuse).
-    pub fn get_drive(&self) -> &str {
-        &self.parsed.drive
-    }
-
-    /// Get root (public for reuse).
-    pub fn get_root(&self) -> &str {
-        &self.parsed.root
-    }
-
-    /// Get anchor (public for reuse).
-    pub fn get_anchor(&self) -> String {
-        self.parsed.anchor()
-    }
-
     /// Get parts (public for reuse) - cached.
     /// Returns a reference to avoid cloning.
     pub fn get_parts(&self) -> &Vec<String> {
         self.parts_cache
             .get_or_init(|| self.parsed.all_parts(self.flavor))
-    }
-
-    /// Get name (public for reuse).
-    pub fn get_name(&self) -> &str {
-        self.parsed.name()
-    }
-
-    /// Get suffix (public for reuse).
-    pub fn get_suffix(&self) -> String {
-        self.parsed.suffix()
-    }
-
-    /// Get suffixes (public for reuse).
-    pub fn get_suffixes(&self) -> Vec<String> {
-        self.parsed.suffixes()
-    }
-
-    /// Get stem (public for reuse).
-    pub fn get_stem(&self) -> String {
-        self.parsed.stem()
     }
 
     /// Get parent (public for reuse).
@@ -421,17 +386,17 @@ impl PurePath {
 
     #[getter]
     fn drive(&self) -> &str {
-        self.get_drive()
+        &self.parsed.drive
     }
 
     #[getter]
     fn root(&self) -> &str {
-        self.get_root()
+        &self.parsed.root
     }
 
     #[getter]
     fn anchor(&self) -> String {
-        self.get_anchor()
+        self.parsed.anchor()
     }
 
     #[getter]
@@ -442,22 +407,22 @@ impl PurePath {
 
     #[getter]
     fn name(&self) -> &str {
-        self.get_name()
+        self.parsed.name()
     }
 
     #[getter]
     fn suffix(&self) -> String {
-        self.get_suffix()
+        self.parsed.suffix()
     }
 
     #[getter]
     fn suffixes(&self) -> Vec<String> {
-        self.get_suffixes()
+        self.parsed.suffixes()
     }
 
     #[getter]
     fn stem(&self) -> String {
-        self.get_stem()
+        self.parsed.stem()
     }
 
     #[getter]
