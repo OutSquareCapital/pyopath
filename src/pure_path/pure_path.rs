@@ -124,16 +124,23 @@ impl PurePath {
                 flavor: self.flavor,
             };
 
-            if current.parts.is_empty() && !current.root.is_empty() {
-                break;
-            }
+            // Stop if we've reached empty path (no drive, no root, no parts)
             if current.parts.is_empty() && current.root.is_empty() && current.drive.is_empty() {
                 break;
             }
 
             result.push(parent_path);
+
+            // If we're at root (has root but no parts), stop after adding it
+            if current.parts.is_empty() && !current.root.is_empty() {
+                break;
+            }
+
             let next = current.parent();
-            if next.parts == current.parts {
+            if next.parts == current.parts
+                && next.root == current.root
+                && next.drive == current.drive
+            {
                 break;
             }
             current = next;
@@ -428,13 +435,31 @@ impl PurePath {
         self.get_is_absolute()
     }
 
-    fn is_relative_to(&self, other: &Self) -> bool {
-        self.get_is_relative_to(other)
+    fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
+        let other_path = if let Ok(p) = other.extract::<Self>() {
+            p
+        } else {
+            let s: String = other.extract()?;
+            Self {
+                parsed: ParsedPath::parse(&s, self.flavor),
+                flavor: self.flavor,
+            }
+        };
+        Ok(self.get_is_relative_to(&other_path))
     }
 
     #[pyo3(signature = (other, walk_up=false))]
-    fn relative_to(&self, other: &Self, walk_up: bool) -> PyResult<Self> {
-        self.compute_relative_to(other, walk_up)
+    fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
+        let other_path = if let Ok(p) = other.extract::<Self>() {
+            p
+        } else {
+            let s: String = other.extract()?;
+            Self {
+                parsed: ParsedPath::parse(&s, self.flavor),
+                flavor: self.flavor,
+            }
+        };
+        self.compute_relative_to(&other_path, walk_up)
     }
 
     #[pyo3(signature = (*args))]

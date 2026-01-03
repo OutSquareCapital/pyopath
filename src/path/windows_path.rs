@@ -10,7 +10,7 @@ use crate::pure_path::flavor::PathFlavor;
 use crate::pure_path::parsing::ParsedPath;
 
 use super::path::{
-    StatResult, path_absolute, path_cwd, path_exists, path_glob, path_home, path_is_dir,
+    Path, StatResult, path_absolute, path_cwd, path_exists, path_glob, path_home, path_is_dir,
     path_is_file, path_is_symlink, path_iterdir, path_lstat, path_mkdir, path_read_bytes,
     path_read_text, path_readlink, path_rename, path_resolve, path_rglob, path_rmdir, path_stat,
     path_touch, path_unlink, path_write_bytes, path_write_text,
@@ -114,14 +114,32 @@ impl WindowsPath {
         self.inner.get_is_absolute()
     }
 
-    fn is_relative_to(&self, other: &Self) -> bool {
-        self.inner.get_is_relative_to(&other.inner)
+    fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
+        let other_path = if let Ok(p) = other.extract::<Self>() {
+            p.inner
+        } else {
+            let s: String = other.extract()?;
+            PurePath {
+                parsed: ParsedPath::parse(&s, self.inner.flavor),
+                flavor: self.inner.flavor,
+            }
+        };
+        Ok(self.inner.get_is_relative_to(&other_path))
     }
 
     #[pyo3(signature = (other, walk_up=false))]
-    fn relative_to(&self, other: &Self, walk_up: bool) -> PyResult<Self> {
+    fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
+        let other_path = if let Ok(p) = other.extract::<Self>() {
+            p.inner
+        } else {
+            let s: String = other.extract()?;
+            PurePath {
+                parsed: ParsedPath::parse(&s, self.inner.flavor),
+                flavor: self.inner.flavor,
+            }
+        };
         Ok(Self {
-            inner: self.inner.compute_relative_to(&other.inner, walk_up)?,
+            inner: self.inner.compute_relative_to(&other_path, walk_up)?,
         })
     }
 

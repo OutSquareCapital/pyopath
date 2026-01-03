@@ -177,10 +177,6 @@ impl ParsedPath {
 
         result.extend(self.parts.iter().cloned());
 
-        if result.is_empty() {
-            result.push(".".to_string());
-        }
-
         // Normalize separators for display
         if flavor == PathFlavor::Windows {
             result = result.into_iter().map(|s| s.replace('/', "\\")).collect();

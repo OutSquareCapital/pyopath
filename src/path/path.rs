@@ -332,14 +332,32 @@ impl Path {
         self.inner.get_is_absolute()
     }
 
-    fn is_relative_to(&self, other: &Self) -> bool {
-        self.inner.get_is_relative_to(&other.inner)
+    fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
+        let other_path = if let Ok(p) = other.extract::<Self>() {
+            p.inner
+        } else {
+            let s: String = other.extract()?;
+            PurePath {
+                parsed: ParsedPath::parse(&s, self.inner.flavor),
+                flavor: self.inner.flavor,
+            }
+        };
+        Ok(self.inner.get_is_relative_to(&other_path))
     }
 
     #[pyo3(signature = (other, walk_up=false))]
-    fn relative_to(&self, other: &Self, walk_up: bool) -> PyResult<Self> {
+    fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
+        let other_path = if let Ok(p) = other.extract::<Self>() {
+            p.inner
+        } else {
+            let s: String = other.extract()?;
+            PurePath {
+                parsed: ParsedPath::parse(&s, self.inner.flavor),
+                flavor: self.inner.flavor,
+            }
+        };
         Ok(Self {
-            inner: self.inner.compute_relative_to(&other.inner, walk_up)?,
+            inner: self.inner.compute_relative_to(&other_path, walk_up)?,
         })
     }
 
