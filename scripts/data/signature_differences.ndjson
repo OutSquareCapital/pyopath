@@ -1,132 +1,60 @@
-{"class": "PurePath", "method": "as_uri", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PurePath", "method": "full_match", "issue": "MISSING", "pathlib": "pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PurePath", "method": "is_reserved", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PurePath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "*pathsegments", "pyopath": "*args"}
-{"class": "PurePath", "method": "match", "issue": "MISSING", "pathlib": "path_pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PurePath", "method": "with_segments", "issue": "MISSING", "pathlib": "*pathsegments", "pyopath": "N/A"}
-{"class": "PurePosixPath", "method": "as_uri", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PurePosixPath", "method": "full_match", "issue": "MISSING", "pathlib": "pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PurePosixPath", "method": "is_reserved", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PurePosixPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "*pathsegments", "pyopath": "*args"}
-{"class": "PurePosixPath", "method": "match", "issue": "MISSING", "pathlib": "path_pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PurePosixPath", "method": "with_segments", "issue": "MISSING", "pathlib": "*pathsegments", "pyopath": "N/A"}
-{"class": "PureWindowsPath", "method": "as_uri", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PureWindowsPath", "method": "full_match", "issue": "MISSING", "pathlib": "pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PureWindowsPath", "method": "is_reserved", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PureWindowsPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "*pathsegments", "pyopath": "*args"}
-{"class": "PureWindowsPath", "method": "match", "issue": "MISSING", "pathlib": "path_pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PureWindowsPath", "method": "with_segments", "issue": "MISSING", "pathlib": "*pathsegments", "pyopath": "N/A"}
-{"class": "Path", "method": "as_uri", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "chmod", "issue": "MISSING", "pathlib": "mode, follow_symlinks=True", "pyopath": "N/A"}
-{"class": "Path", "method": "copy", "issue": "MISSING", "pathlib": "target, **kwargs", "pyopath": "N/A"}
-{"class": "Path", "method": "copy_into", "issue": "MISSING", "pathlib": "target_dir, **kwargs", "pyopath": "N/A"}
-{"class": "Path", "method": "exists", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "Path", "method": "expanduser", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "from_uri", "issue": "MISSING", "pathlib": "uri", "pyopath": "N/A"}
-{"class": "Path", "method": "full_match", "issue": "MISSING", "pathlib": "pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "Path", "method": "glob", "issue": "SIGNATURE_MISMATCH", "pathlib": "pattern, case_sensitive=None, recurse_symlinks=False", "pyopath": "pattern, case_sensitive=None, follow_symlinks=None"}
-{"class": "Path", "method": "group", "issue": "MISSING", "pathlib": "follow_symlinks=True", "pyopath": "N/A"}
-{"class": "Path", "method": "hardlink_to", "issue": "MISSING", "pathlib": "target", "pyopath": "N/A"}
-{"class": "Path", "method": "info", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_block_device", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_char_device", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_dir", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "Path", "method": "is_fifo", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_file", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "Path", "method": "is_junction", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_mount", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_reserved", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "is_socket", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "Path", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "*pathsegments", "pyopath": "*args"}
-{"class": "Path", "method": "lchmod", "issue": "MISSING", "pathlib": "mode", "pyopath": "N/A"}
-{"class": "Path", "method": "match", "issue": "MISSING", "pathlib": "path_pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "Path", "method": "mkdir", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode=511, parents=False, exist_ok=False", "pyopath": "_mode=511, parents=False, exist_ok=False"}
-{"class": "Path", "method": "move", "issue": "MISSING", "pathlib": "target", "pyopath": "N/A"}
-{"class": "Path", "method": "move_into", "issue": "MISSING", "pathlib": "target_dir", "pyopath": "N/A"}
-{"class": "Path", "method": "open", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode='r', buffering=-1, encoding=None, errors=None, newline=None", "pyopath": "mode='r', buffering=Ellipsis, encoding=None, errors=None, newline=None"}
-{"class": "Path", "method": "owner", "issue": "MISSING", "pathlib": "follow_symlinks=True", "pyopath": "N/A"}
-{"class": "Path", "method": "read_text", "issue": "SIGNATURE_MISMATCH", "pathlib": "encoding=None, errors=None, newline=None", "pyopath": "encoding=None"}
-{"class": "Path", "method": "rglob", "issue": "SIGNATURE_MISMATCH", "pathlib": "pattern, case_sensitive=None, recurse_symlinks=False", "pyopath": "pattern, case_sensitive=None, follow_symlinks=None"}
-{"class": "Path", "method": "samefile", "issue": "MISSING", "pathlib": "other_path", "pyopath": "N/A"}
-{"class": "Path", "method": "stat", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "Path", "method": "symlink_to", "issue": "MISSING", "pathlib": "target, target_is_directory=False", "pyopath": "N/A"}
-{"class": "Path", "method": "touch", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode=438, exist_ok=True", "pyopath": "exist_ok=True"}
-{"class": "Path", "method": "walk", "issue": "MISSING", "pathlib": "top_down=True, on_error=None, follow_symlinks=False", "pyopath": "N/A"}
-{"class": "Path", "method": "with_segments", "issue": "MISSING", "pathlib": "*pathsegments", "pyopath": "N/A"}
-{"class": "Path", "method": "write_text", "issue": "SIGNATURE_MISMATCH", "pathlib": "data, encoding=None, errors=None, newline=None", "pyopath": "data, encoding=None"}
-{"class": "PosixPath", "method": "as_uri", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "chmod", "issue": "MISSING", "pathlib": "mode, follow_symlinks=True", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "copy", "issue": "MISSING", "pathlib": "target, **kwargs", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "copy_into", "issue": "MISSING", "pathlib": "target_dir, **kwargs", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "exists", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "PosixPath", "method": "expanduser", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "from_uri", "issue": "MISSING", "pathlib": "uri", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "full_match", "issue": "MISSING", "pathlib": "pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "glob", "issue": "SIGNATURE_MISMATCH", "pathlib": "pattern, case_sensitive=None, recurse_symlinks=False", "pyopath": "pattern, case_sensitive=None, follow_symlinks=None"}
-{"class": "PosixPath", "method": "group", "issue": "MISSING", "pathlib": "follow_symlinks=True", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "hardlink_to", "issue": "MISSING", "pathlib": "target", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "info", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_block_device", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_char_device", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_dir", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "PosixPath", "method": "is_fifo", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_file", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "PosixPath", "method": "is_junction", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_mount", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_reserved", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "is_socket", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "*pathsegments", "pyopath": "*args"}
-{"class": "PosixPath", "method": "lchmod", "issue": "MISSING", "pathlib": "mode", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "match", "issue": "MISSING", "pathlib": "path_pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "mkdir", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode=511, parents=False, exist_ok=False", "pyopath": "_mode=511, parents=False, exist_ok=False"}
-{"class": "PosixPath", "method": "move", "issue": "MISSING", "pathlib": "target", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "move_into", "issue": "MISSING", "pathlib": "target_dir", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "open", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode='r', buffering=-1, encoding=None, errors=None, newline=None", "pyopath": "mode='r', buffering=Ellipsis, encoding=None, errors=None, newline=None"}
-{"class": "PosixPath", "method": "owner", "issue": "MISSING", "pathlib": "follow_symlinks=True", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "read_text", "issue": "SIGNATURE_MISMATCH", "pathlib": "encoding=None, errors=None, newline=None", "pyopath": "encoding=None"}
-{"class": "PosixPath", "method": "rglob", "issue": "SIGNATURE_MISMATCH", "pathlib": "pattern, case_sensitive=None, recurse_symlinks=False", "pyopath": "pattern, case_sensitive=None, follow_symlinks=None"}
-{"class": "PosixPath", "method": "samefile", "issue": "MISSING", "pathlib": "other_path", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "stat", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "PosixPath", "method": "symlink_to", "issue": "MISSING", "pathlib": "target, target_is_directory=False", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "touch", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode=438, exist_ok=True", "pyopath": "exist_ok=True"}
-{"class": "PosixPath", "method": "walk", "issue": "MISSING", "pathlib": "top_down=True, on_error=None, follow_symlinks=False", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "with_segments", "issue": "MISSING", "pathlib": "*pathsegments", "pyopath": "N/A"}
-{"class": "PosixPath", "method": "write_text", "issue": "SIGNATURE_MISMATCH", "pathlib": "data, encoding=None, errors=None, newline=None", "pyopath": "data, encoding=None"}
-{"class": "WindowsPath", "method": "as_uri", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "chmod", "issue": "MISSING", "pathlib": "mode, follow_symlinks=True", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "copy", "issue": "MISSING", "pathlib": "target, **kwargs", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "copy_into", "issue": "MISSING", "pathlib": "target_dir, **kwargs", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "exists", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "WindowsPath", "method": "expanduser", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "from_uri", "issue": "MISSING", "pathlib": "uri", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "full_match", "issue": "MISSING", "pathlib": "pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "glob", "issue": "SIGNATURE_MISMATCH", "pathlib": "pattern, case_sensitive=None, recurse_symlinks=False", "pyopath": "pattern, case_sensitive=None, follow_symlinks=None"}
-{"class": "WindowsPath", "method": "group", "issue": "MISSING", "pathlib": "follow_symlinks=True", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "hardlink_to", "issue": "MISSING", "pathlib": "target", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "info", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_block_device", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_char_device", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_dir", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "WindowsPath", "method": "is_fifo", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_file", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "WindowsPath", "method": "is_junction", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_mount", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_reserved", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "is_socket", "issue": "MISSING", "pathlib": "", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "*pathsegments", "pyopath": "*args"}
-{"class": "WindowsPath", "method": "lchmod", "issue": "MISSING", "pathlib": "mode", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "match", "issue": "MISSING", "pathlib": "path_pattern, case_sensitive=None", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "mkdir", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode=511, parents=False, exist_ok=False", "pyopath": "_mode=511, parents=False, exist_ok=False"}
-{"class": "WindowsPath", "method": "move", "issue": "MISSING", "pathlib": "target", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "move_into", "issue": "MISSING", "pathlib": "target_dir", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "open", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode='r', buffering=-1, encoding=None, errors=None, newline=None", "pyopath": "mode='r', buffering=Ellipsis, encoding=None, errors=None, newline=None"}
-{"class": "WindowsPath", "method": "owner", "issue": "MISSING", "pathlib": "follow_symlinks=True", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "read_text", "issue": "SIGNATURE_MISMATCH", "pathlib": "encoding=None, errors=None, newline=None", "pyopath": "encoding=None"}
-{"class": "WindowsPath", "method": "rglob", "issue": "SIGNATURE_MISMATCH", "pathlib": "pattern, case_sensitive=None, recurse_symlinks=False", "pyopath": "pattern, case_sensitive=None, follow_symlinks=None"}
-{"class": "WindowsPath", "method": "samefile", "issue": "MISSING", "pathlib": "other_path", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "stat", "issue": "SIGNATURE_MISMATCH", "pathlib": "follow_symlinks=True", "pyopath": ""}
-{"class": "WindowsPath", "method": "symlink_to", "issue": "MISSING", "pathlib": "target, target_is_directory=False", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "touch", "issue": "SIGNATURE_MISMATCH", "pathlib": "mode=438, exist_ok=True", "pyopath": "exist_ok=True"}
-{"class": "WindowsPath", "method": "walk", "issue": "MISSING", "pathlib": "top_down=True, on_error=None, follow_symlinks=False", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "with_segments", "issue": "MISSING", "pathlib": "*pathsegments", "pyopath": "N/A"}
-{"class": "WindowsPath", "method": "write_text", "issue": "SIGNATURE_MISMATCH", "pathlib": "data, encoding=None, errors=None, newline=None", "pyopath": "data, encoding=None"}
+{"class_name": "PosixPath", "method": "__truediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PosixPath", "method": "__rtruediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PosixPath", "method": "as_uri", "issue": "MISSING", "pathlib": "() -> str", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "(*other) -> Self", "pyopath": "(*args) -> Self"}
+{"class_name": "PosixPath", "method": "is_socket", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "is_fifo", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "is_block_device", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "is_char_device", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "iterdir", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "Generator[Self]", "pyopath": "Sequence[Self]"}
+{"class_name": "PosixPath", "method": "lchmod", "issue": "MISSING", "pathlib": "(mode) -> None", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "lstat", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "stat_result", "pyopath": "StatResult"}
+{"class_name": "PosixPath", "method": "open", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "TextIOWrapper", "pyopath": "IO[str]"}
+{"class_name": "PosixPath", "method": "symlink_to", "issue": "MISSING", "pathlib": "(target, target_is_directory=False) -> None", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "touch", "issue": "SIGNATURE_MISMATCH", "pathlib": "(mode=438, exist_ok=True) -> None", "pyopath": "(exist_ok=True) -> None"}
+{"class_name": "PosixPath", "method": "expanduser", "issue": "MISSING", "pathlib": "() -> Self", "pyopath": "N/A"}
+{"class_name": "PosixPath", "method": "samefile", "issue": "MISSING", "pathlib": "(other_path) -> bool", "pyopath": "N/A"}
+{"class_name": "Path", "method": "__truediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "Path", "method": "__rtruediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "Path", "method": "as_uri", "issue": "MISSING", "pathlib": "() -> str", "pyopath": "N/A"}
+{"class_name": "Path", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "(*other) -> Self", "pyopath": "(*args) -> Self"}
+{"class_name": "Path", "method": "is_socket", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "Path", "method": "is_fifo", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "Path", "method": "is_block_device", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "Path", "method": "is_char_device", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "Path", "method": "iterdir", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "Generator[Self]", "pyopath": "Sequence[Self]"}
+{"class_name": "Path", "method": "lchmod", "issue": "MISSING", "pathlib": "(mode) -> None", "pyopath": "N/A"}
+{"class_name": "Path", "method": "lstat", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "stat_result", "pyopath": "StatResult"}
+{"class_name": "Path", "method": "open", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "TextIOWrapper", "pyopath": "IO[str]"}
+{"class_name": "Path", "method": "symlink_to", "issue": "MISSING", "pathlib": "(target, target_is_directory=False) -> None", "pyopath": "N/A"}
+{"class_name": "Path", "method": "touch", "issue": "SIGNATURE_MISMATCH", "pathlib": "(mode=438, exist_ok=True) -> None", "pyopath": "(exist_ok=True) -> None"}
+{"class_name": "Path", "method": "expanduser", "issue": "MISSING", "pathlib": "() -> Self", "pyopath": "N/A"}
+{"class_name": "Path", "method": "samefile", "issue": "MISSING", "pathlib": "(other_path) -> bool", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "__truediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "WindowsPath", "method": "__rtruediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "WindowsPath", "method": "as_uri", "issue": "MISSING", "pathlib": "() -> str", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "(*other) -> Self", "pyopath": "(*args) -> Self"}
+{"class_name": "WindowsPath", "method": "is_socket", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "is_fifo", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "is_block_device", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "is_char_device", "issue": "MISSING", "pathlib": "() -> bool", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "iterdir", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "Generator[Self]", "pyopath": "Sequence[Self]"}
+{"class_name": "WindowsPath", "method": "lchmod", "issue": "MISSING", "pathlib": "(mode) -> None", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "lstat", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "stat_result", "pyopath": "StatResult"}
+{"class_name": "WindowsPath", "method": "open", "issue": "RETURN_TYPE_MISMATCH", "pathlib": "TextIOWrapper", "pyopath": "IO[str]"}
+{"class_name": "WindowsPath", "method": "symlink_to", "issue": "MISSING", "pathlib": "(target, target_is_directory=False) -> None", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "touch", "issue": "SIGNATURE_MISMATCH", "pathlib": "(mode=438, exist_ok=True) -> None", "pyopath": "(exist_ok=True) -> None"}
+{"class_name": "WindowsPath", "method": "expanduser", "issue": "MISSING", "pathlib": "() -> Self", "pyopath": "N/A"}
+{"class_name": "WindowsPath", "method": "samefile", "issue": "MISSING", "pathlib": "(other_path) -> bool", "pyopath": "N/A"}
+{"class_name": "PurePath", "method": "__truediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PurePath", "method": "__rtruediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PurePath", "method": "as_uri", "issue": "MISSING", "pathlib": "() -> str", "pyopath": "N/A"}
+{"class_name": "PurePath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "(*other) -> Self", "pyopath": "(*args) -> Self"}
+{"class_name": "PureWindowsPath", "method": "__truediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PureWindowsPath", "method": "__rtruediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PureWindowsPath", "method": "as_uri", "issue": "MISSING", "pathlib": "() -> str", "pyopath": "N/A"}
+{"class_name": "PureWindowsPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "(*other) -> Self", "pyopath": "(*args) -> Self"}
+{"class_name": "PurePosixPath", "method": "__truediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PurePosixPath", "method": "__rtruediv__", "issue": "SIGNATURE_MISMATCH", "pathlib": "(key) -> Self", "pyopath": "(other) -> Self"}
+{"class_name": "PurePosixPath", "method": "as_uri", "issue": "MISSING", "pathlib": "() -> str", "pyopath": "N/A"}
+{"class_name": "PurePosixPath", "method": "joinpath", "issue": "SIGNATURE_MISMATCH", "pathlib": "(*other) -> Self", "pyopath": "(*args) -> Self"}
