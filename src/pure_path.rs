@@ -180,6 +180,18 @@ impl PurePath {
         self.parsed.is_absolute(self.flavor)
     }
 
+    fn parse_other_as_purepath(other: &Bound<'_, PyAny>, flavor: PathFlavor) -> PyResult<Self> {
+        if let Ok(p) = other.cast::<Self>() {
+            Ok(Self::new_with_parsed(
+                p.borrow().parsed.clone(),
+                p.borrow().flavor,
+            ))
+        } else {
+            let s: String = other.extract()?;
+            Ok(Self::new_with_parsed(ParsedPath::parse(&s, flavor), flavor))
+        }
+    }
+
     /// Check if relative to other (public for reuse).
     pub fn get_is_relative_to(&self, other: &Self) -> bool {
         if self.flavor != other.flavor {
@@ -463,24 +475,12 @@ impl PurePath {
     }
 
     fn is_relative_to(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
-        let other_path = if let Ok(p) = other.cast::<Self>() {
-            Self::new_with_parsed(p.borrow().parsed.clone(), p.borrow().flavor)
-        } else {
-            let s: String = other.extract()?;
-            Self::new_with_parsed(ParsedPath::parse(&s, self.flavor), self.flavor)
-        };
-        Ok(self.get_is_relative_to(&other_path))
+        Ok(self.get_is_relative_to(&Self::parse_other_as_purepath(other, self.flavor)?))
     }
 
     #[pyo3(signature = (other, walk_up=false))]
     fn relative_to(&self, other: &Bound<'_, PyAny>, walk_up: bool) -> PyResult<Self> {
-        let other_path = if let Ok(p) = other.cast::<Self>() {
-            Self::new_with_parsed(p.borrow().parsed.clone(), p.borrow().flavor)
-        } else {
-            let s: String = other.extract()?;
-            Self::new_with_parsed(ParsedPath::parse(&s, self.flavor), self.flavor)
-        };
-        self.compute_relative_to(&other_path, walk_up)
+        self.compute_relative_to(&Self::parse_other_as_purepath(other, self.flavor)?, walk_up)
     }
 
     #[pyo3(signature = (*args))]

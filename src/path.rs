@@ -9,6 +9,22 @@ use pyo3::types::{PyBytes, PyTuple};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
+macro_rules! impl_from_pure_path {
+    ($type:ty) => {
+        impl $type {
+            pub fn from_pure_path(pure: PurePath) -> Self {
+                Self { inner: pure }
+            }
+        }
+
+        impl crate::glob_iter::FromPurePath for $type {
+            fn from_pure_path(pure: PurePath) -> Self {
+                Self { inner: pure }
+            }
+        }
+    };
+}
+
 /// A pure path with POSIX semantics (forward slashes, case-sensitive).
 #[pyclass(frozen)]
 pub struct PurePosixPath {
@@ -35,18 +51,7 @@ pub struct Path {
     pub(crate) inner: PurePath,
 }
 
-impl Path {
-    pub fn from_pure_path(pure: PurePath) -> Self {
-        Self { inner: pure }
-    }
-}
-
-impl crate::glob_iter::FromPurePath for Path {
-    fn from_pure_path(pure: PurePath) -> Self {
-        Self { inner: pure }
-    }
-}
-
+impl_from_pure_path!(Path);
 impl_path_wrapper_traits!(Path);
 impl_concrete_path_methods!(Path, PathFlavor::current(), "Path", PathGlobIterator);
 impl_glob_iterator!(PathGlobIterator, Path);
@@ -57,18 +62,7 @@ pub struct PosixPath {
     pub(crate) inner: PurePath,
 }
 
-impl PosixPath {
-    pub fn from_pure_path(pure: PurePath) -> Self {
-        Self { inner: pure }
-    }
-}
-
-impl crate::glob_iter::FromPurePath for PosixPath {
-    fn from_pure_path(pure: PurePath) -> Self {
-        Self { inner: pure }
-    }
-}
-
+impl_from_pure_path!(PosixPath);
 impl_path_wrapper_traits!(PosixPath);
 impl_concrete_path_methods!(
     PosixPath,
@@ -84,18 +78,7 @@ pub struct WindowsPath {
     pub(crate) inner: PurePath,
 }
 
-impl WindowsPath {
-    pub fn from_pure_path(pure: PurePath) -> Self {
-        Self { inner: pure }
-    }
-}
-
-impl crate::glob_iter::FromPurePath for WindowsPath {
-    fn from_pure_path(pure: PurePath) -> Self {
-        Self { inner: pure }
-    }
-}
-
+impl_from_pure_path!(WindowsPath);
 impl_path_wrapper_traits!(WindowsPath);
 impl_concrete_path_methods!(
     WindowsPath,
