@@ -5,6 +5,7 @@ pub struct WindowsSeparator;
 
 impl PosixSeparator {
     const SEP: char = '/';
+    pub const MODULE_NAME: &'static str = "posixpath";
 
     pub fn sep() -> char {
         Self::SEP
@@ -79,6 +80,7 @@ impl PosixSeparator {
 
 impl WindowsSeparator {
     const SEP: char = '\\';
+    pub const MODULE_NAME: &'static str = "ntpath";
 
     pub fn sep() -> char {
         Self::SEP
@@ -101,8 +103,25 @@ impl WindowsSeparator {
     }
 
     pub fn splitroot(path: &str) -> (String, String, String) {
-        // TODO: Handle UNC paths (\\server\share) properly
-        if path.len() >= 2 && path.as_bytes()[1] == b':' {
+        // Handle UNC paths (\\server\share)
+        if let Some(rest) = path.strip_prefix("\\\\") {
+            // UNC path: \\server\share\file
+            // Need to find the share part
+            let parts: Vec<&str> = rest.split(['\\', '/']).collect();
+            if parts.len() >= 2 {
+                // \\server\share is the drive, \ is root, rest is the path
+                let drive = format!("\\\\{}\\{}", parts[0], parts[1]);
+                let body = parts[2..].join("\\");
+                (drive, "\\".to_string(), body)
+            } else if parts.len() == 1 {
+                // Just \\server without share
+                let drive = format!("\\\\{}", parts[0]);
+                (drive, String::new(), String::new())
+            } else {
+                // Edge case: just \\
+                (String::new(), "\\\\".to_string(), String::new())
+            }
+        } else if path.len() >= 2 && path.as_bytes()[1] == b':' {
             // Drive letter: "C:..."
             let drive = path[..2].to_string();
             if path.len() > 2 && (path.as_bytes()[2] == b'\\' || path.as_bytes()[2] == b'/') {
@@ -111,9 +130,6 @@ impl WindowsSeparator {
             } else {
                 (drive, String::new(), path[2..].to_string())
             }
-        } else if let Some(rest) = path.strip_prefix("\\\\") {
-            // UNC path
-            (String::new(), "\\\\".to_string(), rest.to_string())
         } else if let Some(rest) = path.strip_prefix("\\") {
             // Backslash at start, but NOT absolute on Windows without drive
             (String::new(), "\\".to_string(), rest.to_string())
