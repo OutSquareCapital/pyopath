@@ -474,7 +474,10 @@ impl PurePath {
     }
 
     fn __repr__(&self) -> String {
-        format!("PurePath('{}')", self.to_str())
+        format!(
+            "PurePath({})",
+            crate::macros::python_repr_string(&self.to_str())
+        )
     }
 
     fn __fspath__(&self) -> String {

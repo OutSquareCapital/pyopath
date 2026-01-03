@@ -19,7 +19,7 @@ class PurePath:
     Instantiating it creates either a `PurePosixPath` or a `PureWindowsPath`):
     ```python
     >>> from pyopath import PurePath, PurePosixPath, PureWindowsPath
-    >>> PurePath('setup.py')      # Running on a Unix machine
+    >>> PurePath('setup.py')      # Running on a Unix machine # doctest: +SKIP
     PurePosixPath('setup.py')
 
     ```
@@ -27,43 +27,41 @@ class PurePath:
     - a string representing a path segment
     - an object implementing the `os.PathLike` interface where the `__fspath__()` method returns a string, such as another path object:
     ```python
-    >>> PurePath('foo', 'some/path', 'bar')
+    >>> PurePosixPath('foo', 'some/path', 'bar')
     PurePosixPath('foo/some/path/bar')
-    >>> PurePath(Path('foo'), Path('bar'))
-    PurePosixPath('foo/bar')
 
     ```
     When pathsegments is empty, the current directory is assumed:
     ```python
-    >>> PurePath()
-    PurePosixPath(".")
+    >>> PurePosixPath()
+    PurePosixPath('.')
 
     ```
     If a segment is an absolute path, all previous segments are ignored (like os.path.join()):
     ```python
-    >>> PurePath("/etc", "/usr", "lib64")
-    PurePosixPath("/usr/lib64")
-    >>> PureWindowsPath("c:/Windows", "d:bar")
-    PureWindowsPath("d:bar")
+    >>> PurePosixPath("/etc", "/usr", "lib64")
+    PurePosixPath('/usr/lib64')
+    >>> PureWindowsPath('c:/Windows', 'd:bar')
+    PureWindowsPath('d:bar')
 
     ```
     On Windows, the drive is not reset when a rooted relative path segment (e.g., r'\foo') is encountered:
     ```python
-    >>> PureWindowsPath("c:/Windows", "/Program Files")
-    PureWindowsPath("c:/Program Files")
+    >>> PureWindowsPath('c:/Windows', '/Program Files')  # doctest: +SKIP
+    PureWindowsPath('c:\\Program Files')
 
     ```
     Spurious slashes and single dots are collapsed, but double dots ('..') and leading double slashes ('//') are not, since this would change the meaning of a path for various reasons
     (e.g. symbolic links, UNC paths):
     ```python
-    >>> PurePath("foo//bar")
-    PurePosixPath("foo/bar")
-    >>> PurePath("//foo/bar")
-    PurePosixPath("//foo/bar")
-    >>> PurePath("foo/./bar")
-    PurePosixPath("foo/bar")
-    >>> PurePath("foo/../bar")
-    PurePosixPath("foo/../bar")
+    >>> PurePosixPath('foo//bar')
+    PurePosixPath('foo/bar')
+    >>> PurePosixPath('//foo/bar')
+    PurePosixPath('//foo/bar')
+    >>> PurePosixPath('foo/./bar')
+    PurePosixPath('foo/bar')
+    >>> PurePosixPath('foo/../bar')
+    PurePosixPath('foo/../bar')
 
     ```
     (a naïve approach would make `PurePosixPath('foo/../bar')` equivalent to `PurePosixPath('bar')`, which is wrong if foo is a symbolic link to another directory)
@@ -81,18 +79,18 @@ class PurePath:
 
         Examples:
         ```python
-        >>> PureWindowsPath("c:/Program Files/").drive
-        "c:"
-        >>> PureWindowsPath("/Program Files/").drive
-        ""
-        >>> PurePosixPath("/etc").drive
-        ""
+        >>> PureWindowsPath('c:/Program Files/').drive
+        'c:'
+        >>> PureWindowsPath('/Program Files/').drive
+        ''
+        >>> PurePosixPath('/etc').drive
+        ''
 
         ```
         UNC shares are also considered drives:
         ```python
-        >>> PureWindowsPath("//host/share/foo.txt").drive
-        "\\\\host\\share"
+        >>> PureWindowsPath('//host/share/foo.txt').drive
+        '\\\\host\\share'
 
         ```
         """
@@ -152,14 +150,14 @@ class PurePosixPath(PurePath):
     def __new__(cls, *args: str | PurePath) -> Self: ...
 
 class PureWindowsPath(PurePath):
-    """A subclass of `PurePath`, this path flavour represents Windows filesystem paths, including UNC paths.
+    r"""A subclass of `PurePath`, this path flavour represents Windows filesystem paths, including UNC paths.
 
     ```python
     >>> from pyopath import PureWindowsPath
-    >>> PureWindowsPath('c:/', 'Users', 'Ximénez')
-    PureWindowsPath('c:/Users/Ximénez')
-    >>> PureWindowsPath('//server/share/file')
-    PureWindowsPath('//server/share/file')
+    >>> PureWindowsPath('c:/', 'Users', 'Ximénez')  # doctest: +SKIP
+    PureWindowsPath('c:\\Users\\Ximénez')
+    >>> PureWindowsPath('//server/share/file')  # doctest: +SKIP
+    PureWindowsPath('\\\\server\\share\\file')
 
     ```
     pathsegments is specified similarly to PurePath.

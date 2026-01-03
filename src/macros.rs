@@ -1,5 +1,17 @@
 //! Macros for reducing code duplication across path types.
 
+/// Format a string for repr() in Python style (using single quotes, escaping as needed)
+pub(crate) fn python_repr_string(s: &str) -> String {
+    // Python uses single quotes by default, unless the string contains single quotes but no double quotes
+    if s.contains('\'') && !s.contains('"') {
+        format!("{:?}", s) // Use double quotes if single quote is present
+    } else {
+        // Use single quotes, manually escape backslashes and single quotes
+        let escaped = s.replace('\\', "\\\\").replace('\'', "\\'");
+        format!("'{}'", escaped)
+    }
+}
+
 /// Macro to generate a PyClass wrapper for GlobIterator for a specific path type
 #[macro_export]
 macro_rules! impl_glob_iterator {
@@ -169,7 +181,10 @@ macro_rules! impl_pure_path_methods {
             }
 
             fn __repr__(&self) -> String {
-                format!(concat!($repr_name, "('{}')"), self.inner.to_str())
+                format!(
+                    concat!($repr_name, "({})"),
+                    crate::macros::python_repr_string(&self.inner.to_str())
+                )
             }
 
             fn __fspath__(&self) -> String {
@@ -676,7 +691,10 @@ macro_rules! impl_concrete_path_methods {
             }
 
             fn __repr__(&self) -> String {
-                format!(concat!($repr_name, "('{}')"), self.inner.to_str())
+                format!(
+                    concat!($repr_name, "({})"),
+                    crate::macros::python_repr_string(&self.inner.to_str())
+                )
             }
 
             fn __fspath__(&self) -> String {
