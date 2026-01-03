@@ -8,7 +8,4 @@
     name       = "pyopath"
 
 [dependencies]
-    dirs = "6"
-globset = "0.4.18"
     pyo3 = { version = "0.27", features = ["extension-module"] }
-walkdir = "2.5.0"
