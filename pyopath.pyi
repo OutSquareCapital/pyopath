@@ -1,10 +1,24 @@
-"""Type stubs for pyopath - a pathlib clone implemented in Rust."""
+import sys
+import types
+from collections.abc import Callable, Generator, Iterator, Sequence
+from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
+from os import PathLike, stat_result
+from pathlib.types import PathInfo
+from typing import IO, Any, BinaryIO, ClassVar, Literal, Never, Self, overload
 
-from collections.abc import Sequence
-from typing import IO, Self
+from _typeshed import (
+    OpenBinaryMode,
+    OpenBinaryModeReading,
+    OpenBinaryModeUpdating,
+    OpenBinaryModeWriting,
+    OpenTextMode,
+    ReadableBuffer,
+    StrOrBytesPath,
+    StrPath,
+    Unused,
+)
 
-__version__: str
-__all__: list[str] = [
+__all__ = [
     "Path",
     "PosixPath",
     "PurePath",
@@ -13,253 +27,274 @@ __all__: list[str] = [
     "WindowsPath",
 ]
 
-class PurePath:
-    r"""A generic class that represents the system's path flavour.
-
-    Instantiating it creates either a `PurePosixPath` or a `PureWindowsPath`):
-    ```python
-    >>> from pyopath import PurePath, PurePosixPath, PureWindowsPath
-    >>> PurePath('setup.py')      # Running on a Unix machine # doctest: +SKIP
-    PurePosixPath('setup.py')
-
-    ```
-    Each element of pathsegments can be either:
-    - a string representing a path segment
-    - an object implementing the `os.PathLike` interface where the `__fspath__()` method returns a string, such as another path object:
-    ```python
-    >>> PurePosixPath('foo', 'some/path', 'bar')
-    PurePosixPath('foo/some/path/bar')
-
-    ```
-    When pathsegments is empty, the current directory is assumed:
-    ```python
-    >>> PurePosixPath()
-    PurePosixPath('.')
-
-    ```
-    If a segment is an absolute path, all previous segments are ignored (like os.path.join()):
-    ```python
-    >>> PurePosixPath("/etc", "/usr", "lib64")
-    PurePosixPath('/usr/lib64')
-    >>> PureWindowsPath('c:/Windows', 'd:bar')
-    PureWindowsPath('d:bar')
-
-    ```
-    On Windows, the drive is not reset when a rooted relative path segment (e.g., r'\foo') is encountered:
-    ```python
-    >>> PureWindowsPath('c:/Windows', '/Program Files')  # doctest: +SKIP
-    PureWindowsPath('c:\\Program Files')
-
-    ```
-    Spurious slashes and single dots are collapsed, but double dots ('..') and leading double slashes ('//') are not, since this would change the meaning of a path for various reasons
-    (e.g. symbolic links, UNC paths):
-    ```python
-    >>> PurePosixPath('foo//bar')
-    PurePosixPath('foo/bar')
-    >>> PurePosixPath('//foo/bar')
-    PurePosixPath('//foo/bar')
-    >>> PurePosixPath('foo/./bar')
-    PurePosixPath('foo/bar')
-    >>> PurePosixPath('foo/../bar')
-    PurePosixPath('foo/../bar')
-
-    ```
-    (a naïve approach would make `PurePosixPath('foo/../bar')` equivalent to `PurePosixPath('bar')`, which is wrong if foo is a symbolic link to another directory)
-
-    Pure path objects implement the `os.PathLike` interface, allowing them to be used anywhere the interface is accepted.
-    """
-
-    def __new__(cls, *args: str | PurePath) -> Self: ...
+class PurePath(PathLike[str]):
+    __slots__ = (
+        "_drv",
+        "_hash",
+        "_parts_normcase_cached",
+        "_raw_paths",
+        "_root",
+        "_str",
+        "_str_normcase_cached",
+        "_tail_cached",
+    )
+    parser: ClassVar[types.ModuleType]
+    def full_match(
+        self, pattern: StrPath, *, case_sensitive: bool | None = None
+    ) -> bool: ...
     @property
-    def drive(self) -> str:
-        r"""A string representing the drive letter or name, if any.
-
-        Returns:
-            str: The drive component of the path.
-
-        Examples:
-        ```python
-        >>> PureWindowsPath('c:/Program Files/').drive
-        'c:'
-        >>> PureWindowsPath('/Program Files/').drive
-        ''
-        >>> PurePosixPath('/etc').drive
-        ''
-
-        ```
-        UNC shares are also considered drives:
-        ```python
-        >>> PureWindowsPath('//host/share/foo.txt').drive
-        '\\\\host\\share'
-
-        ```
-        """
+    def parts(self) -> tuple[str, ...]: ...
+    @property
+    def drive(self) -> str: ...
     @property
     def root(self) -> str: ...
     @property
     def anchor(self) -> str: ...
     @property
-    def parts(self) -> Sequence[str]: ...
-    @property
     def name(self) -> str: ...
     @property
     def suffix(self) -> str: ...
     @property
-    def suffixes(self) -> Sequence[str]: ...
+    def suffixes(self) -> list[str]: ...
     @property
     def stem(self) -> str: ...
-    @property
-    def parent(self) -> Self: ...
-    @property
-    def parents(self) -> Sequence[Self]: ...
-
-    # Methods
+    def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    def __init__(self, *args: StrPath) -> None: ...  # pyright: ignore[reportInconsistentConstructor]
+    def __hash__(self) -> int: ...
+    def __fspath__(self) -> str: ...
+    def __lt__(self, other: PurePath) -> bool: ...
+    def __le__(self, other: PurePath) -> bool: ...
+    def __gt__(self, other: PurePath) -> bool: ...
+    def __ge__(self, other: PurePath) -> bool: ...
+    def __truediv__(self, key: StrPath) -> Self: ...
+    def __rtruediv__(self, key: StrPath) -> Self: ...
+    def __bytes__(self) -> bytes: ...
+    def as_posix(self) -> str: ...
+    def as_uri(self) -> str: ...
     def is_absolute(self) -> bool: ...
-    def is_relative_to(self, other: Self | str) -> bool: ...
-    def relative_to(self, other: Self | str, *, walk_up: bool = False) -> Self: ...
-    def joinpath(self, *args: str | Self) -> Self: ...
+    def is_relative_to(self, other: StrPath) -> bool: ...
+    def match(
+        self, path_pattern: str, *, case_sensitive: bool | None = None
+    ) -> bool: ...
+    def relative_to(self, other: StrPath, *, walk_up: bool = False) -> Self: ...
     def with_name(self, name: str) -> Self: ...
     def with_stem(self, stem: str) -> Self: ...
     def with_suffix(self, suffix: str) -> Self: ...
-    def as_posix(self) -> str: ...
-
-    # Dunder methods
-    def __fspath__(self) -> str: ...
-    def __truediv__(self, other: str | Self) -> Self: ...
-    def __rtruediv__(self, other: str) -> Self: ...
-    def __hash__(self) -> int: ...
-    def __eq__(self, other: object) -> bool: ...
-    def __ne__(self, other: object) -> bool: ...
-    def __lt__(self, other: Self) -> bool: ...
-    def __le__(self, other: Self) -> bool: ...
-    def __gt__(self, other: Self) -> bool: ...
-    def __ge__(self, other: Self) -> bool: ...
+    def joinpath(self, *other: StrPath) -> Self: ...
+    @property
+    def parents(self) -> Sequence[Self]: ...
+    @property
+    def parent(self) -> Self: ...
+    def with_segments(self, *args: StrPath) -> Self: ...
 
 class PurePosixPath(PurePath):
-    """A subclass of `PurePath`, this path flavour represents non-Windows filesystem paths.
-
-    ```python
-    >>> from pyopath import PurePosixPath
-    >>> PurePosixPath('/etc/hosts')
-    PurePosixPath('/etc/hosts')
-
-    ```
-    pathsegments is specified similarly to PurePath.
-    """
-
-    def __new__(cls, *args: str | PurePath) -> Self: ...
+    __slots__ = ()
 
 class PureWindowsPath(PurePath):
-    r"""A subclass of `PurePath`, this path flavour represents Windows filesystem paths, including UNC paths.
-
-    ```python
-    >>> from pyopath import PureWindowsPath
-    >>> PureWindowsPath('c:/', 'Users', 'Ximénez')  # doctest: +SKIP
-    PureWindowsPath('c:\\Users\\Ximénez')
-    >>> PureWindowsPath('//server/share/file')  # doctest: +SKIP
-    PureWindowsPath('\\\\server\\share\\file')
-
-    ```
-    pathsegments is specified similarly to PurePath.
-    """
-
-    def __new__(cls, *args: str | PurePath) -> Self: ...
-
-class StatResult:
-    """Result of a stat() call."""
-
-    @property
-    def st_mode(self) -> int: ...
-    @property
-    def st_size(self) -> int: ...
-    @property
-    def st_mtime(self) -> float: ...
-    @property
-    def st_atime(self) -> float: ...
-    @property
-    def st_ctime(self) -> float: ...
+    __slots__ = ()
 
 class Path(PurePath):
-    """A concrete path that provides filesystem operations."""
-
-    def __new__(cls, *args: str | PurePath) -> Self: ...
-
-    # Filesystem query methods
-    def exists(self) -> bool: ...
-    def is_file(self) -> bool: ...
-    def is_dir(self) -> bool: ...
-    def is_symlink(self) -> bool: ...
-    def stat(self) -> StatResult: ...
-    def lstat(self) -> StatResult: ...
-
-    # Path resolution
-    def absolute(self) -> Self: ...
-    def resolve(self, strict: bool = False) -> Self: ...
-    def readlink(self) -> Self: ...
-
-    # Directory operations
-    def mkdir(
-        self, mode: int = 0o777, parents: bool = False, exist_ok: bool = False
-    ) -> None: ...
-    def rmdir(self) -> None: ...
-    def iterdir(self) -> Sequence[Self]: ...
+    __slots__ = ("_info",)
+    def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+    @classmethod
+    def cwd(cls) -> Self: ...
+    def stat(self, *, follow_symlinks: bool = True) -> stat_result: ...
+    def chmod(self, mode: int, *, follow_symlinks: bool = True) -> None: ...
+    @classmethod
+    def from_uri(cls, uri: str) -> Self: ...
+    def is_dir(self, *, follow_symlinks: bool = True) -> bool: ...
+    def is_file(self, *, follow_symlinks: bool = True) -> bool: ...
+    def read_text(
+        self,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> str: ...
     def glob(
         self,
         pattern: str,
         *,
         case_sensitive: bool | None = None,
-        follow_symlinks: bool | None = None,
-    ) -> Sequence[Self]: ...
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]: ...
     def rglob(
         self,
         pattern: str,
         *,
         case_sensitive: bool | None = None,
-        follow_symlinks: bool | None = None,
-    ) -> Sequence[Self]: ...
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]: ...
+    def exists(self, *, follow_symlinks: bool = True) -> bool: ...
+    def is_symlink(self) -> bool: ...
+    def is_socket(self) -> bool: ...
+    def is_fifo(self) -> bool: ...
+    def is_block_device(self) -> bool: ...
+    def is_char_device(self) -> bool: ...
+    def is_junction(self) -> bool: ...
+    def iterdir(self) -> Generator[Self]: ...
+    def lchmod(self, mode: int) -> None: ...
+    def lstat(self) -> stat_result: ...
+    def mkdir(
+        self, mode: int = 0o777, parents: bool = False, exist_ok: bool = False
+    ) -> None: ...
+    @property
+    def info(self) -> PathInfo: ...
+    @overload
+    def move_into[T: PurePath](self, target_dir: T) -> T: ...  # type: ignore[overload-overlap]
+    @overload
+    def move_into(self, target_dir: StrPath) -> Self: ...  # type: ignore[overload-overlap]
+    @overload
+    def move[T: PurePath](self, target: T) -> T: ...  # type: ignore[overload-overlap]
+    @overload
+    def move(self, target: StrPath) -> Self: ...  # type: ignore[overload-overlap]
+    @overload
+    def copy_into[T: PurePath](  # type: ignore[overload-overlap]
+        self,
+        target_dir: T,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> T: ...
+    @overload
+    def copy_into(
+        self,
+        target_dir: StrPath,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> Self: ...  # type: ignore[overload-overlap]
+    @overload
+    def copy[T: PurePath](  # type: ignore[overload-overlap]
+        self,
+        target: T,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> T: ...
+    @overload
+    def copy(
+        self,
+        target: StrPath,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> Self: ...  # type: ignore[overload-overlap]
 
-    # File operations
-    def touch(self, exist_ok: bool = True) -> None: ...
-    def unlink(self, missing_ok: bool = False) -> None: ...
-    def rename(self, target: Self | str) -> Self: ...
-    def replace(self, target: Self | str) -> Self: ...
-
-    # Read/write operations
-    def read_text(self, encoding: str | None = None) -> str: ...
-    def write_text(self, data: str, encoding: str | None = None) -> int: ...
-    def read_bytes(self) -> bytes: ...
-    def write_bytes(self, data: bytes) -> int: ...
-
-    # File opening
+    # Adapted from builtins.open
+    # Text mode: always returns a TextIOWrapper
+    # The Traversable .open in stdlib/importlib/abc.pyi should be kept in sync with this.
+    @overload
     def open(
         self,
-        mode: str = "r",
+        mode: OpenTextMode = "r",
         buffering: int = -1,
         encoding: str | None = None,
         errors: str | None = None,
         newline: str | None = None,
-    ) -> IO[str]: ...
+    ) -> TextIOWrapper: ...
+    # Unbuffered binary mode: returns a FileIO
+    @overload
+    def open(
+        self,
+        mode: OpenBinaryMode,
+        buffering: Literal[0],
+        encoding: None = None,
+        errors: None = None,
+        newline: None = None,
+    ) -> FileIO: ...
+    # Buffering is on: return BufferedRandom, BufferedReader, or BufferedWriter
+    @overload
+    def open(
+        self,
+        mode: OpenBinaryModeUpdating,
+        buffering: Literal[-1, 1] = -1,
+        encoding: None = None,
+        errors: None = None,
+        newline: None = None,
+    ) -> BufferedRandom: ...
+    @overload
+    def open(
+        self,
+        mode: OpenBinaryModeWriting,
+        buffering: Literal[-1, 1] = -1,
+        encoding: None = None,
+        errors: None = None,
+        newline: None = None,
+    ) -> BufferedWriter: ...
+    @overload
+    def open(
+        self,
+        mode: OpenBinaryModeReading,
+        buffering: Literal[-1, 1] = -1,
+        encoding: None = None,
+        errors: None = None,
+        newline: None = None,
+    ) -> BufferedReader: ...
+    # Buffering cannot be determined: fall back to BinaryIO
+    @overload
+    def open(
+        self,
+        mode: OpenBinaryMode,
+        buffering: int = -1,
+        encoding: None = None,
+        errors: None = None,
+        newline: None = None,
+    ) -> BinaryIO: ...
+    # Fallback if mode is not specified
+    @overload
+    def open(
+        self,
+        mode: str,
+        buffering: int = -1,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> IO[Any]: ...
 
-    # Static methods
-    @staticmethod
-    def cwd() -> Path: ...
-    @staticmethod
-    def home() -> Path: ...
+    # These methods do "exist" on Windows, but they always raise NotImplementedError.
+    if sys.platform == "win32":
+        # raises UnsupportedOperation:
+        def owner(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+        def group(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+    def owner(self, *, follow_symlinks: bool = True) -> str: ...
+    def group(self, *, follow_symlinks: bool = True) -> str: ...
+    def is_mount(self) -> bool: ...
+    def readlink(self) -> Self: ...
+    def rename(self, target: StrPath) -> Self: ...
+    def replace(self, target: StrPath) -> Self: ...
+    def resolve(self, strict: bool = False) -> Self: ...
+    def rmdir(self) -> None: ...
+    def symlink_to(
+        self, target: StrOrBytesPath, target_is_directory: bool = False
+    ) -> None: ...
+    def hardlink_to(self, target: StrOrBytesPath) -> None: ...
+    def touch(self, mode: int = 0o666, exist_ok: bool = True) -> None: ...
+    def unlink(self, missing_ok: bool = False) -> None: ...
+    @classmethod
+    def home(cls) -> Self: ...
+    def absolute(self) -> Self: ...
+    def expanduser(self) -> Self: ...
+    def read_bytes(self) -> bytes: ...
+    def samefile(self, other_path: StrPath) -> bool: ...
+    def write_bytes(self, data: ReadableBuffer) -> int: ...
+    def write_text(
+        self,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int: ...
+    def walk(
+        self,
+        top_down: bool = True,
+        on_error: Callable[[OSError], object] | None = None,
+        follow_symlinks: bool = False,
+    ) -> Iterator[tuple[Self, list[str], list[str]]]: ...
 
 class PosixPath(Path, PurePosixPath):
-    """A POSIX concrete path with filesystem operations."""
-
-    def __new__(cls, *args: str | PurePath) -> Self: ...
-    @staticmethod
-    def cwd() -> PosixPath: ...
-    @staticmethod
-    def home() -> PosixPath: ...
+    __slots__ = ()
 
 class WindowsPath(Path, PureWindowsPath):
-    """A Windows concrete path with filesystem operations."""
+    __slots__ = ()
 
-    def __new__(cls, *args: str | PurePath) -> Self: ...
-    @staticmethod
-    def cwd() -> WindowsPath: ...
-    @staticmethod
-    def home() -> WindowsPath: ...
+class UnsupportedOperation(NotImplementedError): ...  # noqa: N818
