@@ -4,9 +4,7 @@ import types
 from collections.abc import Callable, Generator, Iterator, Sequence
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
 from os import PathLike, stat_result
-from types import GenericAlias, TracebackType
 from typing import IO, Any, BinaryIO, ClassVar, Literal, Never, Self, TypeVar, overload
-from warnings import deprecated
 
 from _typeshed import (
     OpenBinaryMode,
@@ -31,52 +29,23 @@ __all__ = [
     "WindowsPath",
 ]
 
-if sys.version_info >= (3, 14):
-    from pathlib.types import PathInfo
-
-if sys.version_info >= (3, 13):
-    __all__ += ["UnsupportedOperation"]
+from pathlib.types import PathInfo
 
 class PurePath(PathLike[str]):
-    if sys.version_info >= (3, 13):
-        __slots__ = (
-            "_drv",
-            "_hash",
-            "_parts_normcase_cached",
-            "_raw_paths",
-            "_root",
-            "_str",
-            "_str_normcase_cached",
-            "_tail_cached",
-        )
-    elif sys.version_info >= (3, 12):
-        __slots__ = (
-            "_drv",
-            "_hash",
-            "_lines_cached",
-            "_parts_normcase_cached",
-            "_raw_paths",
-            "_root",
-            "_str",
-            "_str_normcase_cached",
-            "_tail_cached",
-        )
-    else:
-        __slots__ = (
-            "_cached_cparts",
-            "_drv",
-            "_hash",
-            "_parts",
-            "_pparts",
-            "_root",
-            "_str",
-        )
-    if sys.version_info >= (3, 13):
-        parser: ClassVar[types.ModuleType]
-        def full_match(
-            self, pattern: StrPath, *, case_sensitive: bool | None = None
-        ) -> bool: ...
-
+    __slots__ = (
+        "_drv",
+        "_hash",
+        "_parts_normcase_cached",
+        "_raw_paths",
+        "_root",
+        "_str",
+        "_str_normcase_cached",
+        "_tail_cached",
+    )
+    parser: ClassVar[types.ModuleType]
+    def full_match(
+        self, pattern: StrPath, *, case_sensitive: bool | None = None
+    ) -> bool: ...
     @property
     def parts(self) -> tuple[str, ...]: ...
     @property
@@ -93,12 +62,8 @@ class PurePath(PathLike[str]):
     def suffixes(self) -> list[str]: ...
     @property
     def stem(self) -> str: ...
-    if sys.version_info >= (3, 12):
-        def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
-        def __init__(self, *args: StrPath) -> None: ...  # pyright: ignore[reportInconsistentConstructor]
-    else:
-        def __new__(cls, *args: StrPath) -> Self: ...
-
+    def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    def __init__(self, *args: StrPath) -> None: ...  # pyright: ignore[reportInconsistentConstructor]
     def __hash__(self) -> int: ...
     def __fspath__(self) -> str: ...
     def __lt__(self, other: PurePath) -> bool: ...
@@ -111,37 +76,11 @@ class PurePath(PathLike[str]):
     def as_posix(self) -> str: ...
     def as_uri(self) -> str: ...
     def is_absolute(self) -> bool: ...
-    if sys.version_info >= (3, 13):
-        @deprecated(
-            "Deprecated since Python 3.13; will be removed in Python 3.15. "
-            "Use `os.path.isreserved()` to detect reserved paths on Windows."
-        )
-        def is_reserved(self) -> bool: ...
-    else:
-        def is_reserved(self) -> bool: ...
-    if sys.version_info >= (3, 14):
-        def is_relative_to(self, other: StrPath) -> bool: ...
-    elif sys.version_info >= (3, 12):
-        def is_relative_to(self, other: StrPath, /, *_deprecated: StrPath) -> bool: ...
-    else:
-        def is_relative_to(self, *other: StrPath) -> bool: ...
-
-    if sys.version_info >= (3, 12):
-        def match(
-            self, path_pattern: str, *, case_sensitive: bool | None = None
-        ) -> bool: ...
-    else:
-        def match(self, path_pattern: str) -> bool: ...
-
-    if sys.version_info >= (3, 14):
-        def relative_to(self, other: StrPath, *, walk_up: bool = False) -> Self: ...
-    elif sys.version_info >= (3, 12):
-        def relative_to(
-            self, other: StrPath, /, *_deprecated: StrPath, walk_up: bool = False
-        ) -> Self: ...
-    else:
-        def relative_to(self, *other: StrPath) -> Self: ...
-
+    def is_relative_to(self, other: StrPath) -> bool: ...
+    def match(
+        self, path_pattern: str, *, case_sensitive: bool | None = None
+    ) -> bool: ...
+    def relative_to(self, other: StrPath, *, walk_up: bool = False) -> Self: ...
     def with_name(self, name: str) -> Self: ...
     def with_stem(self, stem: str) -> Self: ...
     def with_suffix(self, suffix: str) -> Self: ...
@@ -150,11 +89,7 @@ class PurePath(PathLike[str]):
     def parents(self) -> Sequence[Self]: ...
     @property
     def parent(self) -> Self: ...
-    if sys.version_info < (3, 11):
-        def __class_getitem__(cls, type: Any) -> GenericAlias: ...
-
-    if sys.version_info >= (3, 12):
-        def with_segments(self, *args: StrPath) -> Self: ...
+    def with_segments(self, *args: StrPath) -> Self: ...
 
 class PurePosixPath(PurePath):
     __slots__ = ()
@@ -163,141 +98,91 @@ class PureWindowsPath(PurePath):
     __slots__ = ()
 
 class Path(PurePath):
-    if sys.version_info >= (3, 14):
-        __slots__ = ("_info",)
-    elif sys.version_info >= (3, 10):
-        __slots__ = ()
-    else:
-        __slots__ = ("_accessor",)
-
-    if sys.version_info >= (3, 12):
-        def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
-    else:
-        def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
-
+    __slots__ = ("_info",)
+    def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
     @classmethod
     def cwd(cls) -> Self: ...
-    if sys.version_info >= (3, 10):
-        def stat(self, *, follow_symlinks: bool = True) -> stat_result: ...
-        def chmod(self, mode: int, *, follow_symlinks: bool = True) -> None: ...
-    else:
-        def stat(self) -> stat_result: ...
-        def chmod(self, mode: int) -> None: ...
-
-    if sys.version_info >= (3, 13):
-        @classmethod
-        def from_uri(cls, uri: str) -> Self: ...
-        def is_dir(self, *, follow_symlinks: bool = True) -> bool: ...
-        def is_file(self, *, follow_symlinks: bool = True) -> bool: ...
-        def read_text(
-            self,
-            encoding: str | None = None,
-            errors: str | None = None,
-            newline: str | None = None,
-        ) -> str: ...
-    else:
-        def __enter__(self) -> Self: ...
-        def __exit__(
-            self,
-            t: type[BaseException] | None,
-            v: BaseException | None,
-            tb: TracebackType | None,
-        ) -> None: ...
-        def is_dir(self) -> bool: ...
-        def is_file(self) -> bool: ...
-        def read_text(
-            self, encoding: str | None = None, errors: str | None = None
-        ) -> str: ...
-
-    if sys.version_info >= (3, 13):
-        def glob(
-            self,
-            pattern: str,
-            *,
-            case_sensitive: bool | None = None,
-            recurse_symlinks: bool = False,
-        ) -> Iterator[Self]: ...
-        def rglob(
-            self,
-            pattern: str,
-            *,
-            case_sensitive: bool | None = None,
-            recurse_symlinks: bool = False,
-        ) -> Iterator[Self]: ...
-    elif sys.version_info >= (3, 12):
-        def glob(
-            self, pattern: str, *, case_sensitive: bool | None = None
-        ) -> Generator[Self]: ...
-        def rglob(
-            self, pattern: str, *, case_sensitive: bool | None = None
-        ) -> Generator[Self]: ...
-    else:
-        def glob(self, pattern: str) -> Generator[Self]: ...
-        def rglob(self, pattern: str) -> Generator[Self]: ...
-
-    if sys.version_info >= (3, 12):
-        def exists(self, *, follow_symlinks: bool = True) -> bool: ...
-    else:
-        def exists(self) -> bool: ...
-
+    def stat(self, *, follow_symlinks: bool = True) -> stat_result: ...
+    def chmod(self, mode: int, *, follow_symlinks: bool = True) -> None: ...
+    @classmethod
+    def from_uri(cls, uri: str) -> Self: ...
+    def is_dir(self, *, follow_symlinks: bool = True) -> bool: ...
+    def is_file(self, *, follow_symlinks: bool = True) -> bool: ...
+    def read_text(
+        self,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> str: ...
+    def glob(
+        self,
+        pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]: ...
+    def rglob(
+        self,
+        pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]: ...
+    def exists(self, *, follow_symlinks: bool = True) -> bool: ...
     def is_symlink(self) -> bool: ...
     def is_socket(self) -> bool: ...
     def is_fifo(self) -> bool: ...
     def is_block_device(self) -> bool: ...
     def is_char_device(self) -> bool: ...
-    if sys.version_info >= (3, 12):
-        def is_junction(self) -> bool: ...
-
+    def is_junction(self) -> bool: ...
     def iterdir(self) -> Generator[Self]: ...
     def lchmod(self, mode: int) -> None: ...
     def lstat(self) -> stat_result: ...
     def mkdir(
         self, mode: int = 0o777, parents: bool = False, exist_ok: bool = False
     ) -> None: ...
-
-    if sys.version_info >= (3, 14):
-        @property
-        def info(self) -> PathInfo: ...
-        @overload
-        def move_into(self, target_dir: _PathT) -> _PathT: ...  # type: ignore[overload-overlap]
-        @overload
-        def move_into(self, target_dir: StrPath) -> Self: ...  # type: ignore[overload-overlap]
-        @overload
-        def move(self, target: _PathT) -> _PathT: ...  # type: ignore[overload-overlap]
-        @overload
-        def move(self, target: StrPath) -> Self: ...  # type: ignore[overload-overlap]
-        @overload
-        def copy_into(
-            self,
-            target_dir: _PathT,
-            *,
-            follow_symlinks: bool = True,
-            preserve_metadata: bool = False,
-        ) -> _PathT: ...  # type: ignore[overload-overlap]
-        @overload
-        def copy_into(
-            self,
-            target_dir: StrPath,
-            *,
-            follow_symlinks: bool = True,
-            preserve_metadata: bool = False,
-        ) -> Self: ...  # type: ignore[overload-overlap]
-        @overload
-        def copy(
-            self,
-            target: _PathT,
-            *,
-            follow_symlinks: bool = True,
-            preserve_metadata: bool = False,
-        ) -> _PathT: ...  # type: ignore[overload-overlap]
-        @overload
-        def copy(
-            self,
-            target: StrPath,
-            *,
-            follow_symlinks: bool = True,
-            preserve_metadata: bool = False,
-        ) -> Self: ...  # type: ignore[overload-overlap]
+    @property
+    def info(self) -> PathInfo: ...
+    @overload
+    def move_into(self, target_dir: _PathT) -> _PathT: ...  # type: ignore[overload-overlap]
+    @overload
+    def move_into(self, target_dir: StrPath) -> Self: ...  # type: ignore[overload-overlap]
+    @overload
+    def move(self, target: _PathT) -> _PathT: ...  # type: ignore[overload-overlap]
+    @overload
+    def move(self, target: StrPath) -> Self: ...  # type: ignore[overload-overlap]
+    @overload
+    def copy_into(
+        self,
+        target_dir: _PathT,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> _PathT: ...  # type: ignore[overload-overlap]
+    @overload
+    def copy_into(
+        self,
+        target_dir: StrPath,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> Self: ...  # type: ignore[overload-overlap]
+    @overload
+    def copy(
+        self,
+        target: _PathT,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> _PathT: ...  # type: ignore[overload-overlap]
+    @overload
+    def copy(
+        self,
+        target: StrPath,
+        *,
+        follow_symlinks: bool = True,
+        preserve_metadata: bool = False,
+    ) -> Self: ...  # type: ignore[overload-overlap]
 
     # Adapted from builtins.open
     # Text mode: always returns a TextIOWrapper
@@ -372,44 +257,21 @@ class Path(PurePath):
 
     # These methods do "exist" on Windows, but they always raise NotImplementedError.
     if sys.platform == "win32":
-        if sys.version_info >= (3, 13):
-            # raises UnsupportedOperation:
-            def owner(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
-            def group(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
-        else:
-            def owner(self: Never) -> str: ...  # type: ignore[misc]
-            def group(self: Never) -> str: ...  # type: ignore[misc]
-    elif sys.version_info >= (3, 13):
-        def owner(self, *, follow_symlinks: bool = True) -> str: ...
-        def group(self, *, follow_symlinks: bool = True) -> str: ...
-    else:
-        def owner(self) -> str: ...
-        def group(self) -> str: ...
-
-    # This method does "exist" on Windows on <3.12, but always raises NotImplementedError
-    # On py312+, it works properly on Windows, as with all other platforms
-    if sys.platform == "win32" and sys.version_info < (3, 12):
-        def is_mount(self: Never) -> bool: ...  # type: ignore[misc]
-    else:
-        def is_mount(self) -> bool: ...
-
+        # raises UnsupportedOperation:
+        def owner(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+        def group(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+    def owner(self, *, follow_symlinks: bool = True) -> str: ...
+    def group(self, *, follow_symlinks: bool = True) -> str: ...
+    def is_mount(self) -> bool: ...
     def readlink(self) -> Self: ...
-
-    if sys.version_info >= (3, 10):
-        def rename(self, target: StrPath) -> Self: ...
-        def replace(self, target: StrPath) -> Self: ...
-    else:
-        def rename(self, target: str | PurePath) -> Self: ...
-        def replace(self, target: str | PurePath) -> Self: ...
-
+    def rename(self, target: StrPath) -> Self: ...
+    def replace(self, target: StrPath) -> Self: ...
     def resolve(self, strict: bool = False) -> Self: ...
     def rmdir(self) -> None: ...
     def symlink_to(
         self, target: StrOrBytesPath, target_is_directory: bool = False
     ) -> None: ...
-    if sys.version_info >= (3, 10):
-        def hardlink_to(self, target: StrOrBytesPath) -> None: ...
-
+    def hardlink_to(self, target: StrOrBytesPath) -> None: ...
     def touch(self, mode: int = 0o666, exist_ok: bool = True) -> None: ...
     def unlink(self, missing_ok: bool = False) -> None: ...
     @classmethod
@@ -419,33 +281,19 @@ class Path(PurePath):
     def read_bytes(self) -> bytes: ...
     def samefile(self, other_path: StrPath) -> bool: ...
     def write_bytes(self, data: ReadableBuffer) -> int: ...
-    if sys.version_info >= (3, 10):
-        def write_text(
-            self,
-            data: str,
-            encoding: str | None = None,
-            errors: str | None = None,
-            newline: str | None = None,
-        ) -> int: ...
-    else:
-        def write_text(
-            self, data: str, encoding: str | None = None, errors: str | None = None
-        ) -> int: ...
-    if sys.version_info < (3, 12):
-        if sys.version_info >= (3, 10):
-            @deprecated(
-                "Deprecated since Python 3.10; removed in Python 3.12. Use `hardlink_to()` instead."
-            )
-            def link_to(self, target: StrOrBytesPath) -> None: ...
-        else:
-            def link_to(self, target: StrOrBytesPath) -> None: ...
-    if sys.version_info >= (3, 12):
-        def walk(
-            self,
-            top_down: bool = True,
-            on_error: Callable[[OSError], object] | None = None,
-            follow_symlinks: bool = False,
-        ) -> Iterator[tuple[Self, list[str], list[str]]]: ...
+    def write_text(
+        self,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int: ...
+    def walk(
+        self,
+        top_down: bool = True,
+        on_error: Callable[[OSError], object] | None = None,
+        follow_symlinks: bool = False,
+    ) -> Iterator[tuple[Self, list[str], list[str]]]: ...
 
 class PosixPath(Path, PurePosixPath):
     __slots__ = ()
@@ -453,5 +301,4 @@ class PosixPath(Path, PurePosixPath):
 class WindowsPath(Path, PureWindowsPath):
     __slots__ = ()
 
-if sys.version_info >= (3, 13):
-    class UnsupportedOperation(NotImplementedError): ...
+class UnsupportedOperation(NotImplementedError): ...
