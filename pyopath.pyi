@@ -23,7 +23,7 @@ __all__ = [
     "PosixPath",
     "PurePath",
     "PurePosixPath",
-    "PureWindowsPath",
+    "PurePosixPath",
     "WindowsPath",
 ]
 
@@ -32,23 +32,22 @@ class PurePath(PathLike[str]):
 
     A `PurePath` instance represents a path in a filesystem that is independent of the
     operating system (it doesn't access the filesystem). On instantiation, it creates
-    either a `PurePosixPath` or `PureWindowsPath` depending on the system.
+    either a `PurePosixPath` or `PurePosixPath` depending on the system.
 
     Paths are immutable and hashable, allowing them to be used as dictionary keys or
     in sets. Paths of the same flavor are comparable and orderable.
 
     Args:
-        *pathsegments: Path components to combine. Each element can be a `str` or an
-                       object implementing `os.PathLike`. If empty, the current
-                       directory ('.') is assumed.
+        *pathsegments: Path components to combine. Each element can be a `str` or an object implementing `os.PathLike`.
+        If empty, the current directory ('.') is assumed.
 
     Examples:
     ```python
-    >>> from pyopath import PureWindowsPath
-    >>> PureWindowsPath('setup.py')
-    PureWindowsPath('setup.py')
-    >>> PureWindowsPath('c:/Windows', 'd:bar')
-    PureWindowsPath('d:bar')
+    >>> from pyopath import PurePosixPath
+    >>> PurePosixPath('setup.py')
+    PurePosixPath('setup.py')
+    >>> PurePosixPath('home', 'd:bar')
+    PurePosixPath('home/d:bar')
 
     ```
     """
@@ -59,7 +58,7 @@ class PurePath(PathLike[str]):
         "_parts_normcase_cached",
         "_raw_paths",
         "_root",
-        "_str",
+        "_st",
         "_str_normcase_cached",
         "_tail_cached",
     )
@@ -74,60 +73,58 @@ class PurePath(PathLike[str]):
 
         Args:
             pattern (str): A glob-style pattern using `*`, `?`, `[seq]`, and `**` wildcards.
-            case_sensitive (bool | None): Override platform's case-sensitivity.
-                                         If `None`, uses platform defaults.
+            case_sensitive (bool | None): Override platform's case-sensitivity. If `None`, uses platform defaults.
 
         Returns:
             bool: `True` if the path matches the pattern, `False` otherwise.
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> PureWindowsPath('a/b.py').full_match('a/*.py')
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('a/b.py').full_match('a/*.py')
         True
-        >>> PureWindowsPath('a/b/c.py').full_match('**/*.py')
+        >>> PurePosixPath('a/b/c.py').full_match('**/*.py')
         True
-        >>> PureWindowsPath('a/b.py').full_match('*.py')
+        >>> PurePosixPath('a/b.py').full_match('*.py')
         False
 
         ```
         """
     @property
     def parts(self) -> tuple[str, ...]:
-        r"""Access the individual path components.
+        """Access the individual path components.
 
         Returns a tuple containing all path components, from the drive/root to
-        the final component. The drive and root are regrouped into a single
-        component on Windows.
+        the final component.
+
+        The drive and root are regrouped into a single component on Windows.
 
         Returns:
             tuple[str, ...]: The path components.
 
         Examples:
         ```python
-        >>> from pyopath import PurePath, PureWindowsPath
-        >>> PurePath('/usr/bin/python3').parts
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('/usr/bin/python3').parts
         ('/', 'usr', 'bin', 'python3')
-        >>> PureWindowsPath('c:/Program Files/PSF').parts
-        ('c:\\', 'Program Files', 'PSF')
+        >>> PurePosixPath('Program Files/PSF').parts
+        ('Program Files', 'PSF')
 
         ```
         """
     @property
     def drive(self) -> str:
-        r"""The drive letter or name, if any.
+        """The drive letter or name, if any.
 
         On Windows, this is the drive letter (e.g., 'c:') or UNC share path
-        (e.g., '\\\\host\\share'). On POSIX systems, this is always an empty string.
+        (e.g., '//host/share'). On POSIX systems, this is always an empty string.
 
         Returns:
             str: The drive component of the path, or an empty string if none.
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath, PurePosixPath
-        >>> PureWindowsPath('c:/Program Files/').drive
-        'c:'
+        >>> from pyopath import PurePosixPath
         >>> PurePosixPath('/etc').drive
         ''
 
@@ -135,10 +132,10 @@ class PurePath(PathLike[str]):
         """
     @property
     def root(self) -> str:
-        r"""The root component of the path, if any.
+        """The root component of the path, if any.
 
         On POSIX systems, this is '/' for absolute paths and an empty string
-        for relative paths. On Windows, this is '\\' for absolute paths and
+        for relative paths. On Windows, this is '/' for absolute paths and
         an empty string for relative paths.
 
         Returns:
@@ -146,17 +143,15 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath, PurePosixPath
-        >>> PureWindowsPath('c:/Program Files/').root
-        '\\'
-        >>> PurePosixPath('/etc').root
-        '/'
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('home/').root
+        ''
 
         ```
         """
     @property
     def anchor(self) -> str:
-        r"""The concatenation of the drive and root.
+        """The concatenation of the drive and root.
 
         This represents the filesystem root or reference point of the path.
         On Windows, this can include UNC paths. On POSIX systems, it's typically
@@ -167,9 +162,7 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath, PurePosixPath
-        >>> PureWindowsPath('c:/Program Files/').anchor
-        'c:\\'
+        >>> from pyopath import PurePosixPath
         >>> PurePosixPath('/etc').anchor
         '/'
 
@@ -188,10 +181,8 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PurePath, PureWindowsPath
-        >>> PurePath('my/library/setup.py').name
-        'setup.py'
-        >>> PureWindowsPath('//some/share/setup.py').name
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('my/library/setup.py').name
         'setup.py'
 
         ```
@@ -337,7 +328,10 @@ class PurePath(PathLike[str]):
         ```
         """
     def __rtruediv__(self, key: StrPath) -> Self:
-        r"""Join path segments in reverse order using the `/` operator.
+        """Join path segments using the `/` operator (left-hand side).
+
+        This is called when the left operand is not a path object.
+        It is equivalent to `self.with_segments(key, self)`.
 
         Args:
             key (StrPath): The left-hand path segment.
@@ -347,9 +341,9 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> 'usr' / PureWindowsPath('bin')
-        PureWindowsPath('usr\bin')
+        >>> from pyopath import PurePosixPath
+        >>> 'usr' / PurePosixPath('bin')
+        PurePosixPath('usr/bin')
 
         ```
         """
@@ -364,14 +358,14 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> bytes(PureWindowsPath('etc'))
+        >>> from pyopath import PurePosixPath
+        >>> bytes(PurePosixPath('etc'))
         b'etc'
 
         ```
         """
     def as_posix(self) -> str:
-        r"""Return the string representation of the path with forward slashes.
+        """Return the string representation of the path with forward slashes.
 
         On Windows, this converts backslashes to forward slashes. On POSIX
         systems, the result is identical to `str(self)`.
@@ -381,9 +375,9 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> PureWindowsPath('c:\\windows').as_posix()
-        'c:/windows'
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('windows').as_posix()
+        'windows'
 
         ```
         """
@@ -400,9 +394,9 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> PureWindowsPath('c:/Windows').as_uri()
-        'file:///c:/Windows'
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('/home/').as_uri()
+        'file:/home/'
 
         ```
         """
@@ -481,7 +475,7 @@ class PurePath(PathLike[str]):
         ```
         """
     def with_name(self, name: str) -> Self:
-        r"""Return a new path with the name changed.
+        """Return a new path with the name changed.
 
         The name is the final path component. If the original path doesn't
         have a name (e.g., it's a root), `ValueError` is raised.
@@ -497,14 +491,14 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> PureWindowsPath('c:/Downloads/pathlib.tar.gz').with_name('setup.py')
-        PureWindowsPath('c:\\Downloads\\setup.py')
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('Downloads/pathlib.tar.gz').with_name('setup.py')
+        PurePosixPath('Downloads/setup.py')
 
         ```
         """
     def with_stem(self, stem: str) -> Self:
-        r"""Return a new path with the stem changed.
+        """Return a new path with the stem changed.
 
         The stem is the final path component without its suffixes. If the
         original path doesn't have a name, `ValueError` is raised.
@@ -520,16 +514,16 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> PureWindowsPath('c:/Downloads/draft.txt').with_stem('final')
-        PureWindowsPath('c:\\Downloads\\final.txt')
-        >>> PureWindowsPath('c:/Downloads/pathlib.tar.gz').with_stem('lib')
-        PureWindowsPath('c:\\Downloads\\lib.gz')
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('Downloads/draft.txt').with_stem('final')
+        PurePosixPath('Downloads/final.txt')
+        >>> PurePosixPath('Downloads/pathlib.tar.gz').with_stem('lib')
+        PurePosixPath('Downloads/lib.gz')
 
         ```
         """
     def with_suffix(self, suffix: str) -> Self:
-        r"""Return a new path with the suffix changed.
+        """Return a new path with the suffix changed.
 
         If the original path doesn't have a suffix, the new suffix is appended
         instead. An empty string removes the suffix.
@@ -542,11 +536,11 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> PureWindowsPath('c:/Downloads/pathlib.tar.gz').with_suffix('.bz2')
-        PureWindowsPath('c:\\Downloads\\pathlib.tar.bz2')
-        >>> PureWindowsPath('README').with_suffix('.txt')
-        PureWindowsPath('README.txt')
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('/Downloads/pathlib.tar.gz').with_suffix('.bz2')
+        PurePosixPath('/Downloads/pathlib.tar.bz2')
+        >>> PurePosixPath('README').with_suffix('.txt')
+        PurePosixPath('README.txt')
 
         ```
         """
@@ -573,7 +567,7 @@ class PurePath(PathLike[str]):
         """
     @property
     def parents(self) -> Sequence[Self]:
-        r"""Immutable sequence providing access to logical ancestors of the path.
+        """Immutable sequence providing access to logical ancestors of the path.
 
         Returns a sequence where index 0 is the immediate parent, index 1 is
         the grandparent, etc. You cannot go past the anchor (root) of the path.
@@ -583,13 +577,12 @@ class PurePath(PathLike[str]):
 
         Examples:
         ```python
-        >>> from pyopath import PureWindowsPath
-        >>> p = PureWindowsPath('c:/foo/bar/setup.py')
+        >>> from pyopath import PurePosixPath
+        >>> p = PurePosixPath('/foo/bar/setup.py')
         >>> p.parents[0]
-        PureWindowsPath('c:\\foo\\bar')
+        PurePosixPath('/foo/bar')
         >>> p.parents[1]
-        PureWindowsPath('c:\\foo')
-
+        PurePosixPath('/foo')
         ```
         """
     @property
@@ -835,7 +828,7 @@ class Path(PurePath):
 class PosixPath(Path, PurePosixPath):
     __slots__ = ()
 
-class WindowsPath(Path, PureWindowsPath):
+class WindowsPath(Path, PurePosixPath):
     __slots__ = ()
 
 class UnsupportedOperation(NotImplementedError): ...  # noqa: N818
