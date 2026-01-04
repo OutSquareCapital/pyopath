@@ -11,7 +11,7 @@
 
 [tool.maturin]
     features = ["pyo3/extension-module"]
-    profile  = "release"
+    profile  = "dev"
 
 [dependency-groups]
     dev = [
@@ -20,13 +20,14 @@
         "pyochain>=0.6.1.51",
         "pytest>=8.0",
         "stubtester",
-]
+    ]
 
 [tool.ruff]
     lint.ignore = [
         "C417",
         "COM812",
         "COM812",
+        "D301",
         "D401",
         "E501",
         "FIX002",
@@ -47,6 +48,6 @@
         docstring-code-format = true
 
 [tool.uv.sources]
-stubtester = { git = "https://github.com/OutSquareCapital/stubtester.git" }
+    stubtester = { git = "https://github.com/OutSquareCapital/stubtester.git" }
     [tool.ruff.lint.pydocstyle]
         convention = "google"
