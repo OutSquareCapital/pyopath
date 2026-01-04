@@ -9,26 +9,43 @@ macro_rules! create_pure_path_class {
         pub struct $class_name {
             _raw_path_tuple: Vec<String>,
             str_repr_cached: OnceLock<String>,
+            str_repr_original_cached: OnceLock<String>,
             parsed: OnceLock<ParsedParts>,
             _str_normcase_cached: OnceLock<String>,
             _parts_normcase_cached: OnceLock<Vec<String>>,
         }
 
         impl $class_name {
-            fn compute_str_repr(py: Python, path_strs: &[String]) -> PyResult<String> {
+            fn compute_str_repr(py: Python, path_strs: &[String]) -> PyResult<(String, String)> {
                 if path_strs.is_empty() {
-                    return Ok(".".to_string());
+                    return Ok((".".to_string(), ".".to_string()));
                 }
+
+                // Join all paths (os.path.join will handle it)
                 let join_fn = PyModule::import(py, <$separator>::MODULE_NAME)?.getattr("join")?;
                 let path_tuple = PyTuple::new(py, path_strs)?;
                 let joined_str: String = join_fn.call(path_tuple, None)?.extract()?;
-                Ok(<$separator>::normalize_path(&joined_str))
+
+                // Normalize path separators for the platform
+                let normalized = <$separator>::normalize_path(&joined_str);
+                Ok((joined_str, normalized))
             }
 
             fn str_repr(&self) -> &String {
                 self.str_repr_cached.get_or_init(|| {
                     Python::attach(|py| {
                         Self::compute_str_repr(py, &self._raw_path_tuple)
+                            .map(|(_, normalized)| normalized)
+                            .unwrap_or_else(|_| ".".to_string())
+                    })
+                })
+            }
+
+            fn str_repr_original(&self) -> &String {
+                self.str_repr_original_cached.get_or_init(|| {
+                    Python::attach(|py| {
+                        Self::compute_str_repr(py, &self._raw_path_tuple)
+                            .map(|(original, _)| original)
                             .unwrap_or_else(|_| ".".to_string())
                     })
                 })
@@ -64,7 +81,6 @@ macro_rules! create_pure_path_class {
                 items
                     .iter()
                     .map(|item| {
-                        // Check if it's a PurePath from opposite platform
                         let path_str: String = fspath.call1((&item,))?.extract()?;
 
                         // If current separator is different from source, convert
@@ -94,11 +110,13 @@ macro_rules! create_pure_path_class {
                 let path = Self {
                     _raw_path_tuple: vec![],
                     str_repr_cached: OnceLock::new(),
+                    str_repr_original_cached: OnceLock::new(),
                     parsed: OnceLock::new(),
                     _str_normcase_cached: OnceLock::new(),
                     _parts_normcase_cached: OnceLock::new(),
                 };
-                let _ = path.str_repr_cached.set(str_repr);
+                let _ = path.str_repr_cached.set(str_repr.clone());
+                let _ = path.str_repr_original_cached.set(str_repr);
                 path
             }
         }
@@ -112,6 +130,7 @@ macro_rules! create_pure_path_class {
                 Ok(Self {
                     _raw_path_tuple: path_strs,
                     str_repr_cached: OnceLock::new(),
+                    str_repr_original_cached: OnceLock::new(),
                     parsed: OnceLock::new(),
                     _str_normcase_cached: OnceLock::new(),
                     _parts_normcase_cached: OnceLock::new(),
@@ -123,7 +142,11 @@ macro_rules! create_pure_path_class {
             }
 
             fn __repr__(&self) -> String {
-                format!("{}('{}')", stringify!($class_name), self.str_repr())
+                format!(
+                    "{}('{}')",
+                    stringify!($class_name),
+                    self.str_repr_original()
+                )
             }
 
             fn __eq__(&self, other: &Bound<PyAny>) -> PyResult<bool> {
@@ -464,14 +487,12 @@ macro_rules! create_pure_path_class {
                 // Convert path to forward slashes for URI
                 let path_uri = self.str_repr().replace('\\', "/");
 
-                // For Windows paths, add extra slash for C: → /C:
-                if !parsed.drive.is_empty()
-                    && path_uri.starts_with(|c: char| c.is_ascii_alphabetic())
-                {
+                // For Windows paths with drive letter: file:///C:/path
+                if !parsed.drive.is_empty() {
                     Ok(format!("file:///{}", path_uri))
                 } else {
-                    // For UNC paths
-                    Ok(format!("file:{}", path_uri))
+                    // For POSIX paths: file:///path
+                    Ok(format!("file://{}", path_uri))
                 }
             }
 
