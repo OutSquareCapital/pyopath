@@ -7,22 +7,41 @@ macro_rules! create_pure_path_class {
     ($class_name:ident, $separator:ty, $py_name:expr) => {
         #[pyclass(frozen, name = $py_name)]
         pub struct $class_name {
-            str_repr: String,
+            _raw_path_tuple: Vec<String>,
+            str_repr_cached: OnceLock<String>,
             parsed: OnceLock<ParsedParts>,
             _str_normcase_cached: OnceLock<String>,
             _parts_normcase_cached: OnceLock<Vec<String>>,
-            _raw_paths: Vec<String>,
         }
 
         impl $class_name {
+            fn compute_str_repr(py: Python, path_strs: &[String]) -> PyResult<String> {
+                if path_strs.is_empty() {
+                    return Ok(".".to_string());
+                }
+                let join_fn = PyModule::import(py, <$separator>::MODULE_NAME)?.getattr("join")?;
+                let path_tuple = PyTuple::new(py, path_strs)?;
+                let joined_str: String = join_fn.call(path_tuple, None)?.extract()?;
+                Ok(<$separator>::normalize_path(&joined_str))
+            }
+
+            fn str_repr(&self) -> &String {
+                self.str_repr_cached.get_or_init(|| {
+                    Python::attach(|py| {
+                        Self::compute_str_repr(py, &self._raw_path_tuple)
+                            .unwrap_or_else(|_| ".".to_string())
+                    })
+                })
+            }
+
             fn parsed_parts(&self) -> &ParsedParts {
                 self.parsed
-                    .get_or_init(|| <$separator>::parse(&self.str_repr))
+                    .get_or_init(|| <$separator>::parse(self.str_repr()))
             }
 
             fn str_normcase(&self) -> &String {
                 self._str_normcase_cached
-                    .get_or_init(|| <$separator>::normalize_case(&self.str_repr))
+                    .get_or_init(|| <$separator>::normalize_case(self.str_repr()))
             }
 
             fn parts_normcase(&self) -> &Vec<String> {
@@ -38,21 +57,49 @@ macro_rules! create_pure_path_class {
             /// Helper to convert multiple PathLike objects to strings using os.fspath()
             fn extract_path_strs(py: Python, items: &Bound<PyTuple>) -> PyResult<Vec<String>> {
                 let fspath = PyModule::import(py, "os")?.getattr("fspath")?;
+                let pyopath = PyModule::import(py, "pyopath")?;
+                let pure_posix_path = pyopath.getattr("PurePosixPath")?;
+                let pure_windows_path = pyopath.getattr("PureWindowsPath")?;
+
                 items
                     .iter()
-                    .map(|item| fspath.call1((item,))?.extract())
+                    .map(|item| {
+                        // Check if it's a PurePath from opposite platform
+                        let path_str: String = fspath.call1((&item,))?.extract()?;
+
+                        // If current separator is different from source, convert
+                        let converted = if <$separator>::MODULE_NAME == "posixpath" {
+                            // We're PosixPath - if source is WindowsPath, convert \ to /
+                            if item.is_instance(&pure_windows_path)? {
+                                path_str.replace('\\', "/")
+                            } else {
+                                path_str
+                            }
+                        } else {
+                            // We're WindowsPath - if source is PosixPath, convert / to \
+                            if item.is_instance(&pure_posix_path)? {
+                                path_str.replace('/', "\\")
+                            } else {
+                                path_str
+                            }
+                        };
+
+                        Ok(converted)
+                    })
                     .collect()
             }
 
             /// Helper to create a path from a final str_repr (for derived paths like parent, with_name, etc.)
             fn from_str_repr(str_repr: String) -> Self {
-                Self {
-                    str_repr,
+                let path = Self {
+                    _raw_path_tuple: vec![],
+                    str_repr_cached: OnceLock::new(),
                     parsed: OnceLock::new(),
                     _str_normcase_cached: OnceLock::new(),
                     _parts_normcase_cached: OnceLock::new(),
-                    _raw_paths: vec![], // Empty means already computed/normalized
-                }
+                };
+                let _ = path.str_repr_cached.set(str_repr);
+                path
             }
         }
 
@@ -61,42 +108,22 @@ macro_rules! create_pure_path_class {
             #[new]
             #[pyo3(signature = (*args))]
             fn new(py: Python, args: &Bound<PyTuple>) -> PyResult<Self> {
-                // Collect all path segments, converting PathLike objects using os.fspath()
                 let path_strs = Self::extract_path_strs(py, args)?;
-
-                if path_strs.is_empty() {
-                    // Empty path defaults to "."
-                    return Ok(Self {
-                        str_repr: ".".to_string(),
-                        parsed: OnceLock::new(),
-                        _str_normcase_cached: OnceLock::new(),
-                        _parts_normcase_cached: OnceLock::new(),
-                        _raw_paths: vec![],
-                    });
-                }
-
-                // Use parser.join() to join all path segments (identical to pathlib logic)
-                let join_fn = PyModule::import(py, <$separator>::MODULE_NAME)?.getattr("join")?;
-                let path_tuple = PyTuple::new(py, &path_strs)?;
-                let joined_str: String = join_fn.call(path_tuple, None)?.extract()?;
-                // Normalize separators (/ to \ on Windows, no-op on Posix)
-                let str_repr = <$separator>::normalize_path(&joined_str);
-
                 Ok(Self {
-                    str_repr,
+                    _raw_path_tuple: path_strs,
+                    str_repr_cached: OnceLock::new(),
                     parsed: OnceLock::new(),
                     _str_normcase_cached: OnceLock::new(),
                     _parts_normcase_cached: OnceLock::new(),
-                    _raw_paths: path_strs,
                 })
             }
 
             fn __str__(&self) -> String {
-                self.str_repr.clone()
+                self.str_repr().clone()
             }
 
             fn __repr__(&self) -> String {
-                format!("{}('{}')", stringify!($class_name), self.str_repr)
+                format!("{}('{}')", stringify!($class_name), self.str_repr())
             }
 
             fn __eq__(&self, other: &Bound<PyAny>) -> PyResult<bool> {
@@ -118,13 +145,13 @@ macro_rules! create_pure_path_class {
             }
 
             fn __truediv__(&self, py: Python, key: String) -> PyResult<Py<Self>> {
-                let segments = vec![self.str_repr.clone(), key];
+                let segments = vec![self.str_repr().clone(), key];
                 let segments_tuple = PyTuple::new(py, &segments)?;
                 self.with_segments(py, &segments_tuple)
             }
 
             fn __rtruediv__(&self, py: Python, key: String) -> PyResult<Py<Self>> {
-                let segments = vec![key, self.str_repr.clone()];
+                let segments = vec![key, self.str_repr().clone()];
                 let segments_tuple = PyTuple::new(py, &segments)?;
                 self.with_segments(py, &segments_tuple)
             }
@@ -151,8 +178,8 @@ macro_rules! create_pure_path_class {
             }
 
             #[getter]
-            fn _raw_paths(&self) -> Vec<String> {
-                self._raw_paths.clone()
+            fn _raw_path_tuple(&self) -> Vec<String> {
+                self._raw_path_tuple.clone()
             }
 
             #[getter]
@@ -214,7 +241,7 @@ macro_rules! create_pure_path_class {
             }
 
             fn as_posix(&self) -> String {
-                self.str_repr.replace('\\', "/")
+                self.str_repr().replace('\\', "/")
             }
 
             fn is_absolute(&self) -> bool {
@@ -233,7 +260,7 @@ macro_rules! create_pure_path_class {
             #[pyo3(signature = (*paths))]
             fn joinpath(&self, py: Python, paths: &Bound<PyTuple>) -> PyResult<Py<Self>> {
                 // with_segments(self, *paths)
-                let mut segments = vec![self.str_repr.clone()];
+                let mut segments = vec![self.str_repr().clone()];
                 let path_strs = Self::extract_path_strs(py, paths)?;
                 segments.extend(path_strs);
 
@@ -321,7 +348,8 @@ macro_rules! create_pure_path_class {
                 if self_parsed.drive != other_path.drive || self_parsed.root != other_path.root {
                     return Err(pyo3::exceptions::PyValueError::new_err(format!(
                         "{} is not relative to {}",
-                        self.str_repr, other_str
+                        self.str_repr(),
+                        other_str
                     )));
                 }
 
@@ -329,7 +357,8 @@ macro_rules! create_pure_path_class {
                 if other_path.parts.len() > self_parsed.parts.len() {
                     return Err(pyo3::exceptions::PyValueError::new_err(format!(
                         "{} is not relative to {}",
-                        self.str_repr, other_str
+                        self.str_repr(),
+                        other_str
                     )));
                 }
 
@@ -337,7 +366,8 @@ macro_rules! create_pure_path_class {
                     if self_parsed.parts[i] != *other_part {
                         return Err(pyo3::exceptions::PyValueError::new_err(format!(
                             "{} is not relative to {}",
-                            self.str_repr, other_str
+                            self.str_repr(),
+                            other_str
                         )));
                     }
                 }
@@ -395,7 +425,7 @@ macro_rules! create_pure_path_class {
             }
 
             fn __fspath__(&self) -> String {
-                self.str_repr.clone()
+                self.str_repr().clone()
             }
 
             fn with_name(&self, py: Python, name: &str) -> PyResult<Py<Self>> {
@@ -415,8 +445,11 @@ macro_rules! create_pure_path_class {
                 Py::new(py, Self::from_str_repr(new_path))
             }
 
-            fn __bytes__(&self) -> PyResult<Vec<u8>> {
-                Ok(self.str_repr.as_bytes().to_vec())
+            fn __bytes__(&self, py: Python) -> PyResult<Vec<u8>> {
+                let os = PyModule::import(py, "os")?;
+                let fsencode = os.getattr("fsencode")?;
+                let bytes_obj = fsencode.call1((self.str_repr(),))?;
+                bytes_obj.extract()
             }
 
             fn as_uri(&self) -> PyResult<String> {
@@ -429,7 +462,7 @@ macro_rules! create_pure_path_class {
                 }
 
                 // Convert path to forward slashes for URI
-                let path_uri = self.str_repr.replace('\\', "/");
+                let path_uri = self.str_repr().replace('\\', "/");
 
                 // For Windows paths, add extra slash for C: → /C:
                 if !parsed.drive.is_empty()
@@ -456,7 +489,7 @@ macro_rules! create_pure_path_class {
                 // ? matches exactly one character
                 // [seq] matches characters in sequence
 
-                let path_parts: Vec<&str> = self.str_repr.split(['/', '\\'].as_ref()).collect();
+                let path_parts: Vec<&str> = self.str_repr().split(['/', '\\'].as_ref()).collect();
                 let pattern_parts: Vec<&str> = pattern.split(['/', '\\'].as_ref()).collect();
 
                 self._match_recursive(&path_parts, 0, &pattern_parts, 0)
