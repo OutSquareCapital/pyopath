@@ -455,7 +455,7 @@ class PurePath(PathLike[str]):
             This is a lexical operation and doesn't check the filesystem.
 
         Args:
-            other (str | PathLike): The reference path.
+            other (StrPath): The reference path.
             walk_up (bool): If `True`, '..' entries may be added. Defaults to `False`.
 
         Returns:
