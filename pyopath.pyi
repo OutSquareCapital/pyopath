@@ -395,8 +395,8 @@ class PurePath(PathLike[str]):
         Examples:
         ```python
         >>> from pyopath import PurePosixPath
-        >>> PurePosixPath('/home/').as_uri()
-        'file:/home/'
+        >>> PurePosixPath('/home').as_uri()
+        'file:///home'
 
         ```
         """

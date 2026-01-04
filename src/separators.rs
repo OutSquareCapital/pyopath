@@ -35,47 +35,59 @@ impl PosixSeparator {
         }
     }
 
-    pub fn with_name(parsed: &ParsedParts, name: &str) -> String {
+    pub fn with_name(parsed: &ParsedParts, name: &str) -> ParsedParts {
         let mut new_parts = parsed.parent_parts();
         new_parts.push(name.to_string());
-        let body = new_parts.join(&Self::SEP.to_string());
-        if parsed.root.is_empty() && parsed.drive.is_empty() {
-            if body.is_empty() {
-                ".".to_string()
-            } else {
-                body
-            }
-        } else if body.is_empty() {
-            // Just root, no body
-            parsed.root.clone()
-        } else {
-            // root is "/" so we join directly
-            format!("{}{}", parsed.root, body)
+        ParsedParts {
+            drive: parsed.drive.clone(),
+            root: parsed.root.clone(),
+            parts: new_parts,
         }
     }
 
-    pub fn with_suffix(parsed: &ParsedParts, suffix: &str) -> String {
+    pub fn with_suffix(parsed: &ParsedParts, suffix: &str) -> ParsedParts {
         let mut new_parts = parsed.parent_parts();
         let stem = parsed.stem();
         new_parts.push(format!("{}{}", stem, suffix));
-        let body = new_parts.join(&Self::SEP.to_string());
-        if parsed.root.is_empty() && parsed.drive.is_empty() {
-            if body.is_empty() {
-                ".".to_string()
-            } else {
-                body
-            }
-        } else if body.is_empty() {
-            // Just root, no body
-            parsed.root.clone()
-        } else {
-            // root is "/" so we join directly
-            format!("{}{}", parsed.root, body)
+        ParsedParts {
+            drive: parsed.drive.clone(),
+            root: parsed.root.clone(),
+            parts: new_parts,
         }
     }
 
     pub fn is_absolute(parsed: &ParsedParts) -> bool {
         !parsed.root.is_empty()
+    }
+
+    /// Format ParsedParts back to a string path
+    /// Equivalent to Python's _format_parsed_parts
+    pub fn format_parsed_parts(parsed: &ParsedParts) -> String {
+        if !parsed.drive.is_empty() || !parsed.root.is_empty() {
+            // Has anchor: drive + root + parts
+            format!(
+                "{}{}{}",
+                parsed.drive,
+                parsed.root,
+                parsed.parts.join(&Self::SEP.to_string())
+            )
+        } else if !parsed.parts.is_empty()
+            && parsed.parts[0].len() >= 2
+            && parsed.parts[0].as_bytes()[1] == b':'
+        {
+            // First part looks like a drive letter - add "." prefix
+            let mut parts_with_dot = vec![".".to_string()];
+            parts_with_dot.extend(parsed.parts.clone());
+            parts_with_dot.join(&Self::SEP.to_string())
+        } else {
+            // No anchor, just join parts
+            let joined = parsed.parts.join(&Self::SEP.to_string());
+            if joined.is_empty() {
+                ".".to_string()
+            } else {
+                joined
+            }
+        }
     }
 }
 
@@ -140,47 +152,59 @@ impl WindowsSeparator {
         }
     }
 
-    pub fn with_name(parsed: &ParsedParts, name: &str) -> String {
+    pub fn with_name(parsed: &ParsedParts, name: &str) -> ParsedParts {
         let mut new_parts = parsed.parent_parts();
         new_parts.push(name.to_string());
-        let body = new_parts.join(&Self::SEP.to_string());
-        if parsed.root.is_empty() && parsed.drive.is_empty() {
-            if body.is_empty() {
-                ".".to_string()
-            } else {
-                body
-            }
-        } else if body.is_empty() {
-            // Just drive + root, no body
-            format!("{}{}", parsed.drive, parsed.root)
-        } else {
-            // root is "\\" so we join directly
-            format!("{}{}{}", parsed.drive, parsed.root, body)
+        ParsedParts {
+            drive: parsed.drive.clone(),
+            root: parsed.root.clone(),
+            parts: new_parts,
         }
     }
 
-    pub fn with_suffix(parsed: &ParsedParts, suffix: &str) -> String {
+    pub fn with_suffix(parsed: &ParsedParts, suffix: &str) -> ParsedParts {
         let mut new_parts = parsed.parent_parts();
         let stem = parsed.stem();
         new_parts.push(format!("{}{}", stem, suffix));
-        let body = new_parts.join(&Self::SEP.to_string());
-        if parsed.root.is_empty() && parsed.drive.is_empty() {
-            if body.is_empty() {
-                ".".to_string()
-            } else {
-                body
-            }
-        } else if body.is_empty() {
-            // Just drive + root, no body
-            format!("{}{}", parsed.drive, parsed.root)
-        } else {
-            // root is "\\" so we join directly
-            format!("{}{}{}", parsed.drive, parsed.root, body)
+        ParsedParts {
+            drive: parsed.drive.clone(),
+            root: parsed.root.clone(),
+            parts: new_parts,
         }
     }
 
     pub fn is_absolute(parsed: &ParsedParts) -> bool {
         // On Windows, absolute means has a drive letter
         !parsed.drive.is_empty()
+    }
+
+    /// Format ParsedParts back to a string path
+    /// Equivalent to Python's _format_parsed_parts
+    pub fn format_parsed_parts(parsed: &ParsedParts) -> String {
+        if !parsed.drive.is_empty() || !parsed.root.is_empty() {
+            // Has anchor: drive + root + parts
+            format!(
+                "{}{}{}",
+                parsed.drive,
+                parsed.root,
+                parsed.parts.join(&Self::SEP.to_string())
+            )
+        } else if !parsed.parts.is_empty()
+            && parsed.parts[0].len() >= 2
+            && parsed.parts[0].as_bytes()[1] == b':'
+        {
+            // First part looks like a drive letter - add "." prefix
+            let mut parts_with_dot = vec![".".to_string()];
+            parts_with_dot.extend(parsed.parts.clone());
+            parts_with_dot.join(&Self::SEP.to_string())
+        } else {
+            // No anchor, just join parts
+            let joined = parsed.parts.join(&Self::SEP.to_string());
+            if joined.is_empty() {
+                ".".to_string()
+            } else {
+                joined
+            }
+        }
     }
 }

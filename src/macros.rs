@@ -106,9 +106,9 @@ macro_rules! create_pure_path_class {
                     })
                     .collect()
             }
-
-            /// Helper to create a path from a final str_repr (for derived paths like parent, with_name, etc.)
-            fn from_str_repr(str_repr: String) -> Self {
+            /// Create a path from already-parsed parts
+            fn from_parsed_parts(parsed: ParsedParts) -> Self {
+                let str_repr = <$separator>::format_parsed_parts(&parsed);
                 let path = Self {
                     _raw_path_tuple: vec![],
                     str_repr_cached: OnceLock::new(),
@@ -119,6 +119,7 @@ macro_rules! create_pure_path_class {
                 };
                 let _ = path.str_repr_cached.set(str_repr.clone());
                 let _ = path.str_repr_original_cached.set(str_repr);
+                let _ = path.parsed.set(parsed);
                 path
             }
         }
@@ -241,26 +242,13 @@ macro_rules! create_pure_path_class {
                 let parsed = self.parsed_parts();
                 let parent_parts = parsed.parent_parts();
 
-                let parent_str = if parsed.root.is_empty() && parsed.drive.is_empty() {
-                    if parent_parts.is_empty() {
-                        ".".to_string()
-                    } else {
-                        parent_parts.join(&<$separator>::SEP.to_string())
-                    }
-                } else if parent_parts.is_empty() {
-                    // Just drive + root, no body
-                    format!("{}{}", parsed.drive, parsed.root)
-                } else {
-                    // root already ends with sep (e.g., "\\" or "/"), join directly
-                    format!(
-                        "{}{}{}",
-                        parsed.drive,
-                        parsed.root,
-                        parent_parts.join(&<$separator>::SEP.to_string())
-                    )
+                let parent_parsed = ParsedParts {
+                    drive: parsed.drive.clone(),
+                    root: parsed.root.clone(),
+                    parts: parent_parts,
                 };
 
-                Py::new(py, Self::from_str_repr(parent_str))
+                Py::new(py, Self::from_parsed_parts(parent_parsed))
             }
 
             fn as_posix(&self) -> String {
@@ -304,26 +292,13 @@ macro_rules! create_pure_path_class {
                     }
                     current_parts.pop();
 
-                    let parent_str = if parsed.root.is_empty() && parsed.drive.is_empty() {
-                        if current_parts.is_empty() {
-                            ".".to_string()
-                        } else {
-                            current_parts.join(&<$separator>::SEP.to_string())
-                        }
-                    } else if current_parts.is_empty() {
-                        // Just drive + root
-                        format!("{}{}", parsed.drive, parsed.root)
-                    } else {
-                        // root already ends with sep, join directly
-                        format!(
-                            "{}{}{}",
-                            parsed.drive,
-                            parsed.root,
-                            current_parts.join(&<$separator>::SEP.to_string())
-                        )
+                    let parent_parsed = ParsedParts {
+                        drive: parsed.drive.clone(),
+                        root: parsed.root.clone(),
+                        parts: current_parts.clone(),
                     };
 
-                    let parent_py = Py::new(py, Self::from_str_repr(parent_str))?;
+                    let parent_py = Py::new(py, Self::from_parsed_parts(parent_parsed))?;
                     parent_objs.push(parent_py);
                 }
 
@@ -395,13 +370,13 @@ macro_rules! create_pure_path_class {
 
                 // Build relative path from remaining parts
                 let remaining: Vec<String> = self_parsed.parts[other_path.parts.len()..].to_vec();
-                let relative_str = if remaining.is_empty() {
-                    ".".to_string()
-                } else {
-                    remaining.join(&<$separator>::SEP.to_string())
+                let relative_parsed = ParsedParts {
+                    drive: String::new(),
+                    root: String::new(),
+                    parts: remaining,
                 };
 
-                Py::new(py, Self::from_str_repr(relative_str))
+                Py::new(py, Self::from_parsed_parts(relative_parsed))
             }
 
             fn __lt__(&self, other: &Bound<PyAny>) -> PyResult<bool> {
@@ -449,20 +424,20 @@ macro_rules! create_pure_path_class {
             }
 
             fn with_name(&self, py: Python, name: &str) -> PyResult<Py<Self>> {
-                let new_path = <$separator>::with_name(self.parsed_parts(), name);
-                Py::new(py, Self::from_str_repr(new_path))
+                let new_parsed = <$separator>::with_name(self.parsed_parts(), name);
+                Py::new(py, Self::from_parsed_parts(new_parsed))
             }
 
             fn with_suffix(&self, py: Python, suffix: &str) -> PyResult<Py<Self>> {
-                let new_path = <$separator>::with_suffix(self.parsed_parts(), suffix);
-                Py::new(py, Self::from_str_repr(new_path))
+                let new_parsed = <$separator>::with_suffix(self.parsed_parts(), suffix);
+                Py::new(py, Self::from_parsed_parts(new_parsed))
             }
 
             fn with_stem(&self, py: Python, stem: &str) -> PyResult<Py<Self>> {
                 let suffix = self.parsed_parts().suffix();
-                let new_path =
+                let new_parsed =
                     <$separator>::with_name(self.parsed_parts(), &format!("{}{}", stem, suffix));
-                Py::new(py, Self::from_str_repr(new_path))
+                Py::new(py, Self::from_parsed_parts(new_parsed))
             }
 
             fn __bytes__(&self, py: Python) -> PyResult<Vec<u8>> {
