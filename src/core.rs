@@ -81,13 +81,9 @@ impl ParsedParts {
                 // File starts with dot like ".gitignore" - no suffixes
                 return result;
             }
-            // Split the part after first dot by dots
-            let after_first_dot = &name[first_dot..];
-            let parts: Vec<&str> = after_first_dot.split('.').collect();
-
             // For each part after the first split (which is the first dot itself),
             // add ".part" as a suffix
-            for part in &parts[1..] {
+            for part in &name[first_dot..].split('.').collect::<Vec<&str>>()[1..] {
                 if !part.is_empty() {
                     result.push(format!(".{}", part));
                 }

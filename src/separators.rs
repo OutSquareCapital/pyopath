@@ -4,12 +4,8 @@ pub struct PosixSeparator;
 pub struct WindowsSeparator;
 
 impl PosixSeparator {
-    const SEP: char = '/';
+    pub const SEP: char = '/';
     pub const MODULE_NAME: &'static str = "posixpath";
-
-    pub fn sep() -> char {
-        Self::SEP
-    }
 
     /// On Posix, no normalization needed
     pub fn normalize_path(path: &str) -> String {
@@ -24,7 +20,7 @@ impl PosixSeparator {
     pub fn parse(raw_path: &str) -> ParsedParts {
         let (drive, root, rest) = Self::splitroot(raw_path);
         let parts: Vec<String> = rest
-            .split('/')
+            .split(Self::SEP)
             .filter(|p| !p.is_empty() && *p != ".")
             .map(|s| s.to_string())
             .collect();
@@ -32,8 +28,8 @@ impl PosixSeparator {
     }
 
     pub fn splitroot(path: &str) -> (String, String, String) {
-        if let Some(rest) = path.strip_prefix('/') {
-            (String::new(), "/".to_string(), rest.to_string())
+        if let Some(rest) = path.strip_prefix(Self::SEP) {
+            (String::new(), Self::SEP.to_string(), rest.to_string())
         } else {
             (String::new(), String::new(), path.to_string())
         }
@@ -42,7 +38,7 @@ impl PosixSeparator {
     pub fn with_name(parsed: &ParsedParts, name: &str) -> String {
         let mut new_parts = parsed.parent_parts();
         new_parts.push(name.to_string());
-        let body = new_parts.join("/");
+        let body = new_parts.join(&Self::SEP.to_string());
         if parsed.root.is_empty() && parsed.drive.is_empty() {
             if body.is_empty() {
                 ".".to_string()
@@ -62,7 +58,7 @@ impl PosixSeparator {
         let mut new_parts = parsed.parent_parts();
         let stem = parsed.stem();
         new_parts.push(format!("{}{}", stem, suffix));
-        let body = new_parts.join("/");
+        let body = new_parts.join(&Self::SEP.to_string());
         if parsed.root.is_empty() && parsed.drive.is_empty() {
             if body.is_empty() {
                 ".".to_string()
@@ -84,16 +80,12 @@ impl PosixSeparator {
 }
 
 impl WindowsSeparator {
-    const SEP: char = '\\';
+    pub const SEP: char = '\\';
     pub const MODULE_NAME: &'static str = "ntpath";
-
-    pub fn sep() -> char {
-        Self::SEP
-    }
 
     /// Normalize a path by converting / to \\ for Windows
     pub fn normalize_path(path: &str) -> String {
-        path.replace('/', "\\")
+        path.replace(PosixSeparator::SEP, &Self::SEP.to_string())
     }
 
     /// On Windows, case-insensitive: convert to lowercase
@@ -105,7 +97,7 @@ impl WindowsSeparator {
         let normalized = Self::normalize_path(raw_path);
         let (drive, root, rest) = Self::splitroot(&normalized);
         let parts: Vec<String> = rest
-            .split(['\\', '/'])
+            .split([Self::SEP, PosixSeparator::SEP])
             .filter(|p| !p.is_empty() && *p != ".")
             .map(|s| s.to_string())
             .collect();
@@ -117,12 +109,12 @@ impl WindowsSeparator {
         if let Some(rest) = path.strip_prefix("\\\\") {
             // UNC path: \\server\share\file
             // Need to find the share part
-            let parts: Vec<&str> = rest.split(['\\', '/']).collect();
+            let parts: Vec<&str> = rest.split([Self::SEP, PosixSeparator::SEP]).collect();
             if parts.len() >= 2 {
                 // \\server\share is the drive, \ is root, rest is the path
                 let drive = format!("\\\\{}\\{}", parts[0], parts[1]);
-                let body = parts[2..].join("\\");
-                (drive, "\\".to_string(), body)
+                let body = parts[2..].join(&Self::SEP.to_string());
+                (drive, Self::SEP.to_string(), body)
             } else if parts.len() == 1 {
                 // Just \\server without share
                 let drive = format!("\\\\{}", parts[0]);
@@ -136,13 +128,13 @@ impl WindowsSeparator {
             let drive = path[..2].to_string();
             if path.len() > 2 && (path.as_bytes()[2] == b'\\' || path.as_bytes()[2] == b'/') {
                 // C:\... or C:/... → Both make it absolute with drive
-                (drive, "\\".to_string(), path[3..].to_string())
+                (drive, Self::SEP.to_string(), path[3..].to_string())
             } else {
                 (drive, String::new(), path[2..].to_string())
             }
-        } else if let Some(rest) = path.strip_prefix("\\") {
+        } else if let Some(rest) = path.strip_prefix(Self::SEP) {
             // Backslash at start, but NOT absolute on Windows without drive
-            (String::new(), "\\".to_string(), rest.to_string())
+            (String::new(), Self::SEP.to_string(), rest.to_string())
         } else {
             (String::new(), String::new(), path.to_string())
         }
@@ -151,7 +143,7 @@ impl WindowsSeparator {
     pub fn with_name(parsed: &ParsedParts, name: &str) -> String {
         let mut new_parts = parsed.parent_parts();
         new_parts.push(name.to_string());
-        let body = new_parts.join("\\");
+        let body = new_parts.join(&Self::SEP.to_string());
         if parsed.root.is_empty() && parsed.drive.is_empty() {
             if body.is_empty() {
                 ".".to_string()
@@ -171,7 +163,7 @@ impl WindowsSeparator {
         let mut new_parts = parsed.parent_parts();
         let stem = parsed.stem();
         new_parts.push(format!("{}{}", stem, suffix));
-        let body = new_parts.join("\\");
+        let body = new_parts.join(&Self::SEP.to_string());
         if parsed.root.is_empty() && parsed.drive.is_empty() {
             if body.is_empty() {
                 ".".to_string()
