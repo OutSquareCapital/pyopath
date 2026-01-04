@@ -9,6 +9,9 @@ macro_rules! create_pure_path_class {
         pub struct $class_name {
             str_repr: String,
             parsed: OnceLock<ParsedParts>,
+            _str_normcase_cached: OnceLock<String>,
+            _parts_normcase_cached: OnceLock<Vec<String>>,
+            _raw_paths: Vec<String>,
         }
 
         impl $class_name {
@@ -16,47 +19,75 @@ macro_rules! create_pure_path_class {
                 self.parsed
                     .get_or_init(|| <$separator>::parse(&self.str_repr))
             }
+
+            fn str_normcase(&self) -> &String {
+                self._str_normcase_cached
+                    .get_or_init(|| <$separator>::normalize_case(&self.str_repr))
+            }
+
+            fn parts_normcase(&self) -> &Vec<String> {
+                self._parts_normcase_cached.get_or_init(|| {
+                    let sep = <$separator>::sep();
+                    self.str_normcase()
+                        .split(sep)
+                        .map(|s| s.to_string())
+                        .collect()
+                })
+            }
+
+            /// Helper to convert multiple PathLike objects to strings using os.fspath()
+            fn extract_path_strs(py: Python, items: &Bound<PyTuple>) -> PyResult<Vec<String>> {
+                let fspath = PyModule::import(py, "os")?.getattr("fspath")?;
+                items
+                    .iter()
+                    .map(|item| fspath.call1((item,))?.extract())
+                    .collect()
+            }
+
+            /// Helper to create a path from a final str_repr (for derived paths like parent, with_name, etc.)
+            fn from_str_repr(str_repr: String) -> Self {
+                Self {
+                    str_repr,
+                    parsed: OnceLock::new(),
+                    _str_normcase_cached: OnceLock::new(),
+                    _parts_normcase_cached: OnceLock::new(),
+                    _raw_paths: vec![], // Empty means already computed/normalized
+                }
+            }
         }
 
         #[pymethods]
         impl $class_name {
             #[new]
             #[pyo3(signature = (*args))]
-            fn new(args: &Bound<PyTuple>) -> PyResult<Self> {
-                if args.is_empty() {
-                    // If no arguments, use current directory
+            fn new(py: Python, args: &Bound<PyTuple>) -> PyResult<Self> {
+                // Collect all path segments, converting PathLike objects using os.fspath()
+                let path_strs = Self::extract_path_strs(py, args)?;
+
+                if path_strs.is_empty() {
+                    // Empty path defaults to "."
                     return Ok(Self {
                         str_repr: ".".to_string(),
                         parsed: OnceLock::new(),
+                        _str_normcase_cached: OnceLock::new(),
+                        _parts_normcase_cached: OnceLock::new(),
+                        _raw_paths: vec![],
                     });
                 }
 
-                let mut path_strs = Vec::new();
-                for item in args {
-                    path_strs.push(item.extract::<String>()?);
-                }
-
-                // Join paths, resetting when an absolute path is encountered
-                let mut str_repr = String::new();
-                for path_str in path_strs {
-                    let parsed = <$separator>::parse(&path_str);
-                    // If this segment is absolute (has drive or root), reset and use it
-                    if !parsed.drive.is_empty() || !parsed.root.is_empty() {
-                        str_repr = path_str;
-                    } else if str_repr.is_empty() {
-                        str_repr = path_str;
-                    } else {
-                        str_repr.push(<$separator>::sep());
-                        str_repr.push_str(&path_str);
-                    }
-                }
-
-                // Normalize slashes for this separator type
-                let normalized = <$separator>::normalize_path(&str_repr);
+                // Use parser.join() to join all path segments (identical to pathlib logic)
+                let join_fn = PyModule::import(py, <$separator>::MODULE_NAME)?.getattr("join")?;
+                let path_tuple = PyTuple::new(py, &path_strs)?;
+                let joined_str: String = join_fn.call(path_tuple, None)?.extract()?;
+                // Normalize separators (/ to \ on Windows, no-op on Posix)
+                let str_repr = <$separator>::normalize_path(&joined_str);
 
                 Ok(Self {
-                    str_repr: normalized,
+                    str_repr,
                     parsed: OnceLock::new(),
+                    _str_normcase_cached: OnceLock::new(),
+                    _parts_normcase_cached: OnceLock::new(),
+                    _raw_paths: path_strs,
                 })
             }
 
@@ -72,7 +103,7 @@ macro_rules! create_pure_path_class {
                 match other.extract::<Py<$class_name>>() {
                     Ok(other_py) => Python::attach(|py| {
                         let other_path = other_py.borrow(py);
-                        Ok(self.str_repr == other_path.str_repr)
+                        Ok(self.str_normcase() == other_path.str_normcase())
                     }),
                     Err(_) => Ok(false),
                 }
@@ -82,25 +113,20 @@ macro_rules! create_pure_path_class {
                 use std::collections::hash_map::DefaultHasher;
                 use std::hash::{Hash, Hasher};
                 let mut hasher = DefaultHasher::new();
-                self.str_repr.hash(&mut hasher);
+                self.str_normcase().hash(&mut hasher);
                 hasher.finish()
             }
 
             fn __truediv__(&self, py: Python, key: String) -> PyResult<Py<Self>> {
-                let sep = <$separator>::sep();
-                let joined = format!("{}{}{}", self.str_repr, sep, key);
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: joined,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                let segments = vec![self.str_repr.clone(), key];
+                let segments_tuple = PyTuple::new(py, &segments)?;
+                self.with_segments(py, &segments_tuple)
             }
 
-            #[getter]
-            fn parts(&self) -> Vec<String> {
-                self.parsed_parts().all_parts()
+            fn __rtruediv__(&self, py: Python, key: String) -> PyResult<Py<Self>> {
+                let segments = vec![key, self.str_repr.clone()];
+                let segments_tuple = PyTuple::new(py, &segments)?;
+                self.with_segments(py, &segments_tuple)
             }
 
             #[getter]
@@ -116,6 +142,27 @@ macro_rules! create_pure_path_class {
             #[getter]
             fn anchor(&self) -> String {
                 self.parsed_parts().anchor()
+            }
+
+            #[getter]
+            fn parts(&self, py: Python) -> PyResult<Py<PyTuple>> {
+                let parts_vec = self.parsed_parts().all_parts();
+                Ok(PyTuple::new(py, parts_vec)?.into())
+            }
+
+            #[getter]
+            fn _raw_paths(&self) -> Vec<String> {
+                self._raw_paths.clone()
+            }
+
+            #[getter]
+            fn _str_normcase(&self) -> String {
+                self.str_normcase().clone()
+            }
+
+            #[getter]
+            fn _parts_normcase(&self) -> Vec<String> {
+                self.parts_normcase().clone()
             }
 
             #[getter]
@@ -163,13 +210,7 @@ macro_rules! create_pure_path_class {
                     )
                 };
 
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: parent_str,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                Py::new(py, Self::from_str_repr(parent_str))
             }
 
             fn as_posix(&self) -> String {
@@ -186,57 +227,15 @@ macro_rules! create_pure_path_class {
                 py: Python,
                 pathsegments: &Bound<PyTuple>,
             ) -> PyResult<Py<Self>> {
-                // Collect all path strings using os.fspath for PathLike objects
-                let os_module = PyModule::import(py, "os")?;
-                let fspath = os_module.getattr("fspath")?;
-
-                let mut path_strs = Vec::new();
-                for item in pathsegments {
-                    let path_str: String = fspath.call1((item,))?.extract()?;
-                    path_strs.push(path_str);
-                }
-
-                if path_strs.is_empty() {
-                    return Ok(Py::new(
-                        py,
-                        Self {
-                            str_repr: ".".to_string(),
-                            parsed: OnceLock::new(),
-                        },
-                    )?);
-                }
-
-                let path_module = PyModule::import(py, <$separator>::MODULE_NAME)?;
-                let join_fn = path_module.getattr("join")?;
-
-                let path_tuple = PyTuple::new(py, &path_strs)?;
-                let joined_result = join_fn.call(path_tuple, None)?;
-                let str_repr: String = joined_result.extract()?;
-
-                // Normalize for consistency
-                let normalized = <$separator>::normalize_path(&str_repr);
-
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: normalized,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                Py::new(py, Self::new(py, pathsegments)?)
             }
 
             #[pyo3(signature = (*paths))]
             fn joinpath(&self, py: Python, paths: &Bound<PyTuple>) -> PyResult<Py<Self>> {
                 // with_segments(self, *paths)
                 let mut segments = vec![self.str_repr.clone()];
-
-                let os_module = PyModule::import(py, "os")?;
-                let fspath = os_module.getattr("fspath")?;
-
-                for item in paths {
-                    let path_str: String = fspath.call1((item,))?.extract()?;
-                    segments.push(path_str);
-                }
+                let path_strs = Self::extract_path_strs(py, paths)?;
+                segments.extend(path_strs);
 
                 let segments_tuple = PyTuple::new(py, &segments)?;
                 self.with_segments(py, &segments_tuple)
@@ -276,13 +275,7 @@ macro_rules! create_pure_path_class {
                         )
                     };
 
-                    let parent_py = Py::new(
-                        py,
-                        Self {
-                            str_repr: parent_str,
-                            parsed: OnceLock::new(),
-                        },
-                    )?;
+                    let parent_py = Py::new(py, Self::from_str_repr(parent_str))?;
                     parent_objs.push(parent_py);
                 }
 
@@ -358,20 +351,14 @@ macro_rules! create_pure_path_class {
                     remaining.join(&sep.to_string())
                 };
 
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: relative_str,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                Py::new(py, Self::from_str_repr(relative_str))
             }
 
             fn __lt__(&self, other: &Bound<PyAny>) -> PyResult<bool> {
                 match other.extract::<Py<$class_name>>() {
                     Ok(other_py) => Python::attach(|py| {
                         let other_path = other_py.borrow(py);
-                        Ok(self.str_repr < other_path.str_repr)
+                        Ok(self.parts_normcase() < other_path.parts_normcase())
                     }),
                     Err(_) => Ok(false),
                 }
@@ -381,7 +368,7 @@ macro_rules! create_pure_path_class {
                 match other.extract::<Py<$class_name>>() {
                     Ok(other_py) => Python::attach(|py| {
                         let other_path = other_py.borrow(py);
-                        Ok(self.str_repr <= other_path.str_repr)
+                        Ok(self.parts_normcase() <= other_path.parts_normcase())
                     }),
                     Err(_) => Ok(false),
                 }
@@ -391,7 +378,7 @@ macro_rules! create_pure_path_class {
                 match other.extract::<Py<$class_name>>() {
                     Ok(other_py) => Python::attach(|py| {
                         let other_path = other_py.borrow(py);
-                        Ok(self.str_repr > other_path.str_repr)
+                        Ok(self.parts_normcase() > other_path.parts_normcase())
                     }),
                     Err(_) => Ok(false),
                 }
@@ -401,7 +388,7 @@ macro_rules! create_pure_path_class {
                 match other.extract::<Py<$class_name>>() {
                     Ok(other_py) => Python::attach(|py| {
                         let other_path = other_py.borrow(py);
-                        Ok(self.str_repr >= other_path.str_repr)
+                        Ok(self.parts_normcase() >= other_path.parts_normcase())
                     }),
                     Err(_) => Ok(false),
                 }
@@ -413,37 +400,19 @@ macro_rules! create_pure_path_class {
 
             fn with_name(&self, py: Python, name: &str) -> PyResult<Py<Self>> {
                 let new_path = <$separator>::with_name(self.parsed_parts(), name);
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: new_path,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                Py::new(py, Self::from_str_repr(new_path))
             }
 
             fn with_suffix(&self, py: Python, suffix: &str) -> PyResult<Py<Self>> {
                 let new_path = <$separator>::with_suffix(self.parsed_parts(), suffix);
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: new_path,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                Py::new(py, Self::from_str_repr(new_path))
             }
 
             fn with_stem(&self, py: Python, stem: &str) -> PyResult<Py<Self>> {
                 let suffix = self.parsed_parts().suffix();
                 let new_path =
                     <$separator>::with_name(self.parsed_parts(), &format!("{}{}", stem, suffix));
-                Py::new(
-                    py,
-                    Self {
-                        str_repr: new_path,
-                        parsed: OnceLock::new(),
-                    },
-                )
+                Py::new(py, Self::from_str_repr(new_path))
             }
 
             fn __bytes__(&self) -> PyResult<Vec<u8>> {

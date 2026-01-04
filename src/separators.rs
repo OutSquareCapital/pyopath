@@ -16,6 +16,11 @@ impl PosixSeparator {
         path.to_string()
     }
 
+    /// On Posix, case-sensitive: return as-is
+    pub fn normalize_case(path: &str) -> String {
+        path.to_string()
+    }
+
     pub fn parse(raw_path: &str) -> ParsedParts {
         let (drive, root, rest) = Self::splitroot(raw_path);
         let parts: Vec<String> = rest
@@ -89,6 +94,11 @@ impl WindowsSeparator {
     /// Normalize a path by converting / to \\ for Windows
     pub fn normalize_path(path: &str) -> String {
         path.replace('/', "\\")
+    }
+
+    /// On Windows, case-insensitive: convert to lowercase
+    pub fn normalize_case(path: &str) -> String {
+        path.to_lowercase()
     }
 
     pub fn parse(raw_path: &str) -> ParsedParts {
