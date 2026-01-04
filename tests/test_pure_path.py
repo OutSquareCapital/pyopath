@@ -235,3 +235,141 @@ class TestPurePathFspath:
         p = pyopath.PurePath("/home/user/file.txt")
         expected = str(pathlib.PurePath("/home/user/file.txt"))
         assert os.fspath(p) == expected
+
+
+class TestPurePathCrossPlatformConversion:
+    """Test PurePath type conversion between platforms."""
+
+    def test_posix_from_windows_path(self) -> None:
+        """Test PurePosixPath creation from PureWindowsPath."""
+        # Create a Windows path
+        win_path = pyopath.PureWindowsPath("C:\\Users\\test\\file.txt")
+
+        # Convert to PosixPath - should convert backslashes to forward slashes
+        posix_path = pyopath.PurePosixPath(win_path)
+
+        # The path should have forward slashes
+        assert str(posix_path) == "C:/Users/test/file.txt"
+
+    def test_windows_from_posix_path(self) -> None:
+        """Test PureWindowsPath creation from PurePosixPath."""
+        # Create a Posix path
+        posix_path = pyopath.PurePosixPath("/home/user/file.txt")
+
+        # Convert to WindowsPath - should convert forward slashes to backslashes
+        win_path = pyopath.PureWindowsPath(posix_path)
+
+        # The path should have backslashes
+        assert str(win_path) == "\\home\\user\\file.txt"
+
+    def test_multiple_cross_platform_args(self) -> None:
+        """Test mixing paths from different platforms."""
+        # Start with a Windows path, then add Posix path
+        win_path = pyopath.PureWindowsPath("C:\\Users")
+        posix_segment = pyopath.PurePosixPath("/home/user")
+
+        # Combine - separator should be normalized to Windows style
+        combined = pyopath.PureWindowsPath(win_path, posix_segment)
+
+        # Should have backslashes
+        assert "\\" in str(combined) or str(combined) == "C:\\Users\\home\\user"
+
+    def test_unc_path_conversion(self) -> None:
+        """Test UNC path conversion."""
+        # Create UNC path
+        unc_path = pyopath.PureWindowsPath("\\\\server\\share\\file.txt")
+
+        # Convert to Posix - should convert backslashes
+        posix_path = pyopath.PurePosixPath(unc_path)
+
+        # Should have forward slashes
+        assert str(posix_path) == "//server/share/file.txt"
+
+
+class TestPurePathMissingMethods:
+    """Test methods that weren't covered in other test classes."""
+
+    def test_repr(self) -> None:
+        """Test __repr__ method."""
+        p = pyopath.PurePath("/home/user/file.txt")
+        path_lib = pathlib.PurePath("/home/user/file.txt")
+
+        # Compare repr with pathlib
+        assert repr(p) == repr(path_lib)
+
+    def test_bytes(self) -> None:
+        """Test __bytes__ method."""
+        p = pyopath.PurePath("/home/user/file.txt")
+        path_lib = pathlib.PurePath("/home/user/file.txt")
+
+        # Compare bytes with pathlib
+        assert bytes(p) == bytes(path_lib)
+
+    def test_as_uri_posix(self) -> None:
+        """Test as_uri method for POSIX paths."""
+        p = pyopath.PurePosixPath("/home/user/file.txt")
+        path_lib = pathlib.PurePosixPath("/home/user/file.txt")
+
+        # Compare with pathlib
+        uri = p.as_uri()
+        expected = path_lib.as_uri()
+        assert uri == expected
+
+    def test_as_uri_windows(self) -> None:
+        """Test as_uri method for Windows paths."""
+        p = pyopath.PureWindowsPath("C:\\Users\\test\\file.txt")
+        path_lib = pathlib.PureWindowsPath("C:\\Users\\test\\file.txt")
+
+        # Compare with pathlib
+        uri = p.as_uri()
+        expected = path_lib.as_uri()
+        assert uri == expected
+
+    def test_as_uri_relative_path_raises(self) -> None:
+        """Test as_uri raises for relative paths."""
+        p = pyopath.PurePosixPath("relative/path")
+
+        # Should raise ValueError for relative paths
+        with pytest.raises(ValueError):
+            p.as_uri()
+
+    def test_full_match(self) -> None:
+        """Test full_match method."""
+        p = pyopath.PurePosixPath("a/b/c.txt")
+        path_lib = pathlib.PurePosixPath("a/b/c.txt")
+
+        # Compare all patterns with pathlib
+        assert p.full_match("a/b/c.txt") == path_lib.full_match("a/b/c.txt")
+        assert p.full_match("a/b/*.txt") == path_lib.full_match("a/b/*.txt")
+        assert p.full_match("a/*/c.txt") == path_lib.full_match("a/*/c.txt")
+
+    def test_full_match_glob_patterns(self) -> None:
+        """Test full_match with various glob patterns."""
+        p = pyopath.PureWindowsPath("folder\\file.tar.gz")
+        path_lib = pathlib.PureWindowsPath("folder\\file.tar.gz")
+
+        # Test exact match - should match pathlib
+        assert p.full_match("folder\\file.tar.gz") == path_lib.full_match(
+            "folder\\file.tar.gz"
+        )
+        # Test simple wildcard at end - compare with pathlib
+        assert p.full_match("folder\\*") == path_lib.full_match("folder\\*")
+        # Test that non-matching pattern returns False like pathlib
+        assert p.full_match("other\\*") == path_lib.full_match("other\\*")
+
+    def test_with_segments(self) -> None:
+        """Test with_segments method."""
+        p = pyopath.PurePath("/home/user")
+        new_p = p.with_segments("/var/log/app.log")
+
+        # Should create new path from segments
+        assert str(new_p) == str(pathlib.PurePath("/var/log/app.log"))
+
+    def test_with_segments_multiple(self) -> None:
+        """Test with_segments with multiple arguments."""
+        p = pyopath.PurePath("/home")
+        new_p = p.with_segments("/usr", "local", "bin")
+
+        # Should join all segments
+        expected = str(pathlib.PurePath("/usr/local/bin"))
+        assert str(new_p) == expected
