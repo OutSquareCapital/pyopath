@@ -6,6 +6,8 @@ paths with operations that have semantics appropriate for different
 operating systems.
 """
 
+from __future__ import annotations
+
 import io
 import ntpath
 import operator
@@ -13,12 +15,13 @@ import os
 import pathlib
 import posixpath
 import sys
+import types
 from _collections_abc import Sequence
 from errno import *
 from glob import _no_recurse_symlinks, _StringGlobber
 from itertools import chain
 from stat import S_ISBLK, S_ISCHR, S_ISDIR, S_ISFIFO, S_ISREG, S_ISSOCK
-from typing import Any
+from typing import Any, ClassVar, Self
 
 try:
     import pwd
@@ -90,13 +93,28 @@ class _PathParents(Sequence):
 
 
 class PurePath:
-    """Base class for manipulating paths without I/O.
+    """Represent a filesystem path using the system's path flavor.
 
-    PurePath represents a filesystem path and offers operations which
-    don't imply any actual filesystem I/O.  Depending on your system,
-    instantiating a PurePath will return either a PurePosixPath or a
-    PureWindowsPath object.  You can also instantiate either of these classes
-    directly, regardless of your system.
+    A `PurePath` instance represents a path in a filesystem that is independent of the
+    operating system (it doesn't access the filesystem). On instantiation, it creates
+    either a `PurePosixPath` or `PurePosixPath` depending on the system.
+
+    Paths are immutable and hashable, allowing them to be used as dictionary keys or
+    in sets. Paths of the same flavor are comparable and orderable.
+
+    Args:
+        *pathsegments: Path components to combine. Each element can be a `str` or an object implementing `os.PathLike`.
+        If empty, the current directory ('.') is assumed.
+
+    Examples:
+    ```python
+    >>> from pyopath import PurePosixPath
+    >>> PurePosixPath('setup.py')
+    PurePosixPath('setup.py')
+    >>> PurePosixPath('home', 'd:bar')
+    PurePosixPath('home/d:bar')
+
+    ```
     """
 
     __slots__ = (
@@ -131,11 +149,12 @@ class PurePath:
         # path. It's set when `__hash__()` is called for the first time.
         "_hash",
     )
-    parser = os.path
+    parser: ClassVar[types.ModuleType] = os.path
 
     def __new__(cls, *args: StrPath, **kwargs: Any) -> Self:
-        """Construct a PurePath from one or several strings and or existing
-        PurePath objects.  The strings and path objects are combined so as
+        """Construct a PurePath from one or several strings and or existing PurePath objects.
+
+        The strings and path objects are combined so as
         to yield a canonicalized path, which is incorporated into the
         new PurePath object.
         """
@@ -144,6 +163,11 @@ class PurePath:
         return object.__new__(cls)
 
     def __init__(self, *args: StrPath) -> None:
+        """Initialize a path instance.
+
+        Args:
+            *args: Path segments to combine.
+        """
         paths: list[str] = []
         for arg in args:
             if isinstance(arg, PurePath):
@@ -158,11 +182,12 @@ class PurePath:
                 except TypeError:
                     path = arg
                 if not isinstance(path, str):
-                    raise TypeError(
+                    msg = (
                         "argument should be a str or an os.PathLike "
                         "object where __fspath__ returns a str, "
                         f"not {type(path).__name__!r}"
                     )
+                    raise TypeError(msg)
                 paths.append(path)
         self._raw_paths = paths
 
@@ -181,13 +206,48 @@ class PurePath:
         """
         return self.with_segments(self, *pathsegments)
 
-    def __truediv__(self, key):
+    def __truediv__(self, key: StrPath) -> Self:
+        """Join path segments using the `/` operator (equivalent to `joinpath()`).
+
+        Args:
+            key (str | PathLike): The path segment(s) to append.
+
+        Returns:
+            Self: A new path with the segments combined.
+
+        Examples:
+        ```python
+        >>> from pyopath import PurePosixPath
+        >>> PurePosixPath('/etc') / 'init.d' / 'apache2'
+        PurePosixPath('/etc/init.d/apache2')
+
+        ```
+        """
         try:
             return self.with_segments(self, key)
         except TypeError:
             return NotImplemented
 
-    def __rtruediv__(self, key):
+    def __rtruediv__(self, key: StrPath) -> Self:
+        """Join path segments using the `/` operator (left-hand side).
+
+        This is called when the left operand is not a path object.
+        It is equivalent to `self.with_segments(key, self)`.
+
+        Args:
+            key (StrPath): The left-hand path segment.
+
+        Returns:
+            Self: A new path with the segments combined.
+
+        Examples:
+        ```python
+        >>> from pyopath import PurePosixPath
+        >>> 'usr' / PurePosixPath('bin')
+        PurePosixPath('usr/bin')
+
+        ```
+        """
         try:
             return self.with_segments(key, self)
         except TypeError:
@@ -199,12 +259,35 @@ class PurePath:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.as_posix()!r})"
 
-    def __fspath__(self):
+    def __fspath__(self) -> str:
+        """Return the string representation of the path.
+
+        This implements `os.PathLike`, allowing path objects to be used
+        wherever a file path string is expected.
+
+        Returns:
+            str: The string representation of the path.
+        """
         return str(self)
 
-    def __bytes__(self):
-        """Return the bytes representation of the path.  This is only
-        recommended to use under Unix.
+    def __bytes__(self) -> bytes:
+        """Return the filesystem path as bytes.
+
+        The path is encoded using `os.fsencode()`. Note that this is only
+        recommended on Unix systems; on Windows, use the string representation.
+
+        This is only recommended to use under Unix.
+
+        Returns:
+            bytes: The path encoded as bytes.
+
+        Examples:
+        ```python
+        >>> from pyopath import PurePosixPath
+        >>> bytes(PurePosixPath('etc'))
+        b'etc'
+
+        ```
         """
         return os.fsencode(self)
 
@@ -220,7 +303,14 @@ class PurePath:
                 self._str_normcase_cached = str(self).lower()
             return self._str_normcase_cached
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Return the hash of the path.
+
+        Paths are hashable and can be used as dictionary keys or in sets.
+
+        Returns:
+            int: The hash value of the path.
+        """
         try:
             return self._hash
         except AttributeError:
@@ -241,22 +331,56 @@ class PurePath:
             self._parts_normcase_cached = self._str_normcase.split(self.parser.sep)
             return self._parts_normcase_cached
 
-    def __lt__(self, other):
+    def __lt__(self, other: PurePath) -> bool:
+        """Check if this path is lexicographically less than **other**.
+
+        Paths of different flavors cannot be compared and will raise `TypeError`.
+
+        Args:
+            other (PurePath): The path to compare with.
+
+        Returns:
+            bool: `True` if self < other, `False` otherwise.
+        """
         if not isinstance(other, PurePath) or self.parser is not other.parser:
             return NotImplemented
         return self._parts_normcase < other._parts_normcase
 
-    def __le__(self, other):
+    def __le__(self, other: PurePath) -> bool:
+        """Check if this path is lexicographically less than or equal to **other**.
+
+        Args:
+            other (PurePath): The path to compare with.
+
+        Returns:
+            bool: `True` if self <= other, `False` otherwise.
+        """
         if not isinstance(other, PurePath) or self.parser is not other.parser:
             return NotImplemented
         return self._parts_normcase <= other._parts_normcase
 
-    def __gt__(self, other):
+    def __gt__(self, other: PurePath) -> bool:
+        """Check if this path is lexicographically greater than **other**.
+
+        Args:
+            other (PurePath): The path to compare with.
+
+        Returns:
+            bool: `True` if self > other, `False` otherwise.
+        """
         if not isinstance(other, PurePath) or self.parser is not other.parser:
             return NotImplemented
         return self._parts_normcase > other._parts_normcase
 
-    def __ge__(self, other):
+    def __ge__(self, other: PurePath) -> bool:
+        """Check if this path is lexicographically greater than or equal to **other**.
+
+        Args:
+            other (PurePath): The path to compare with.
+
+        Returns:
+            bool: `True` if self >= other, `False` otherwise.
+        """
         if not isinstance(other, PurePath) or self.parser is not other.parser:
             return NotImplemented
         return self._parts_normcase >= other._parts_normcase
