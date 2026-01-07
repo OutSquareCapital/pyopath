@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from glob import _PathGlobber
 from io import text_encoding
 from pathlib import Path, PurePath
-from typing import Protocol, runtime_checkable
+from typing import Never, Protocol, runtime_checkable
 
 from ._os import (
     copyfileobj,
@@ -77,14 +77,14 @@ class _JoinablePath(ABC):
 
     @property
     @abstractmethod
-    def parser(self):
+    def parser(self) -> Never:
         """Implementation of pathlib._types.Parser used for low-level path
         parsing and manipulation.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def with_segments(self, *pathsegments):
+    def with_segments(self, *pathsegments) -> Never:
         """Construct a new path object from any number of path-like objects.
         Subclasses may override this method to customize how new path objects
         are created from methods like `iterdir()`.
@@ -92,7 +92,7 @@ class _JoinablePath(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def __str__(self):
+    def __str__(self) -> str:
         """Return the string representation of the path, suitable for
         passing to system calls.
         """
@@ -139,7 +139,8 @@ class _JoinablePath(ABC):
         """Return a new path with the file name changed."""
         split = self.parser.split
         if split(name)[0]:
-            raise ValueError(f"Invalid name {name!r}")
+            msg = f"Invalid name {name!r}"
+            raise ValueError(msg)
         path = str(self)
         path = path.removesuffix(split(path)[1]) + name
         return self.with_segments(path)
@@ -151,7 +152,8 @@ class _JoinablePath(ABC):
             return self.with_name(stem)
         if not stem:
             # If the suffix is non-empty, we can't make the stem empty.
-            raise ValueError(f"{self!r} has a non-empty suffix")
+            msg = f"{self!r} has a non-empty suffix"
+            raise ValueError(msg)
         return self.with_name(stem + suffix)
 
     def with_suffix(self, suffix):
@@ -162,9 +164,11 @@ class _JoinablePath(ABC):
         stem = self.stem
         if not stem:
             # If the stem is empty, we can't make the suffix non-empty.
-            raise ValueError(f"{self!r} has an empty name")
+            msg = f"{self!r} has an empty name"
+            raise ValueError(msg)
         if suffix and not suffix.startswith("."):
-            raise ValueError(f"Invalid suffix {suffix!r}")
+            msg = f"Invalid suffix {suffix!r}"
+            raise ValueError(msg)
         return self.with_name(stem + suffix)
 
     @property
@@ -241,7 +245,7 @@ class _ReadablePath(_JoinablePath):
 
     @property
     @abstractmethod
-    def info(self):
+    def info(self) -> Never:
         """A PathInfo object that exposes the file type and other file attributes
         of this path.
         """
@@ -270,7 +274,7 @@ class _ReadablePath(_JoinablePath):
             return f.read()
 
     @abstractmethod
-    def iterdir(self):
+    def iterdir(self) -> Never:
         """Yield path objects of the directory contents.
 
         The children are yielded in arbitrary order, and the
@@ -284,11 +288,14 @@ class _ReadablePath(_JoinablePath):
         """
         anchor, parts = _explode_path(pattern, self.parser.split)
         if anchor:
-            raise NotImplementedError("Non-relative patterns are unsupported")
+            msg = "Non-relative patterns are unsupported"
+            raise NotImplementedError(msg)
         if not parts:
-            raise ValueError(f"Unacceptable pattern: {pattern!r}")
+            msg = f"Unacceptable pattern: {pattern!r}"
+            raise ValueError(msg)
         if not recurse_symlinks:
-            raise NotImplementedError("recurse_symlinks=False is unsupported")
+            msg = "recurse_symlinks=False is unsupported"
+            raise NotImplementedError(msg)
         case_sensitive = self.parser.normcase("Aa") == "Aa"
         globber = _PathGlobber(self.parser.sep, case_sensitive, recursive=True)
         select = globber.selector(parts)
@@ -326,7 +333,7 @@ class _ReadablePath(_JoinablePath):
                 paths += [path.joinpath(d) for d in reversed(dirnames)]
 
     @abstractmethod
-    def readlink(self):
+    def readlink(self) -> Never:
         """Return the path to which the symbolic link points."""
         raise NotImplementedError
 
@@ -340,7 +347,8 @@ class _ReadablePath(_JoinablePath):
         """Copy this file or directory tree into the given existing directory."""
         name = self.name
         if not name:
-            raise ValueError(f"{self!r} has an empty name")
+            msg = f"{self!r} has an empty name"
+            raise ValueError(msg)
         return self.copy(target_dir / name, **kwargs)
 
 
@@ -355,14 +363,14 @@ class _WritablePath(_JoinablePath):
     __slots__ = ()
 
     @abstractmethod
-    def symlink_to(self, target, target_is_directory=False):
+    def symlink_to(self, target, target_is_directory=False) -> Never:
         """Make this path a symlink pointing to the target path.
         Note the order of arguments (link, target) is the reverse of os.symlink.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def mkdir(self):
+    def mkdir(self) -> Never:
         """Create a new directory at this given path."""
         raise NotImplementedError
 
@@ -386,13 +394,14 @@ class _WritablePath(_JoinablePath):
         # appropriate stack level.
         encoding = text_encoding(encoding)
         if not isinstance(data, str):
-            raise TypeError("data must be str, not %s" % data.__class__.__name__)
+            msg = f"data must be str, not {data.__class__.__name__}"
+            raise TypeError(msg)
         with magic_open(
             self, mode="w", encoding=encoding, errors=errors, newline=newline
         ) as f:
             return f.write(data)
 
-    def _copy_from(self, source, follow_symlinks=True):
+    def _copy_from(self, source, follow_symlinks=True) -> None:
         """Recursively copy the given path to this path."""
         stack = [(source, self)]
         while stack:

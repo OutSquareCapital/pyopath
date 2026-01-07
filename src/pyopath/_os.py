@@ -42,7 +42,7 @@ def _get_copy_blocksize(infd):
 
 if fcntl and hasattr(fcntl, "FICLONE"):
 
-    def _ficlone(source_fd, target_fd):
+    def _ficlone(source_fd, target_fd) -> None:
         """Perform a lightweight copy of two files, where the data blocks are
         copied only when modified. This is known as Copy on Write (CoW),
         instantaneous copy or reflink.
@@ -54,7 +54,7 @@ else:
 
 if posix and hasattr(posix, "_fcopyfile"):
 
-    def _fcopyfile(source_fd, target_fd):
+    def _fcopyfile(source_fd, target_fd) -> None:
         """Copy a regular file content using high-performance fcopyfile(3)
         syscall (macOS).
         """
@@ -65,7 +65,7 @@ else:
 
 if hasattr(os, "copy_file_range"):
 
-    def _copy_file_range(source_fd, target_fd):
+    def _copy_file_range(source_fd, target_fd) -> None:
         """Copy data from one regular mmap-like fd to another by using a
         high-performance copy_file_range(2) syscall that gives filesystems
         an opportunity to implement the use of reflinks or server-side
@@ -87,7 +87,7 @@ else:
 
 if hasattr(os, "sendfile"):
 
-    def _sendfile(source_fd, target_fd):
+    def _sendfile(source_fd, target_fd) -> None:
         """Copy data from one regular mmap-like fd to another by using
         high-performance sendfile(2) syscall.
         This should work on Linux >= 2.6.33 only.
@@ -105,14 +105,14 @@ else:
 
 if _winapi and hasattr(_winapi, "CopyFile2"):
 
-    def copyfile2(source, target):
+    def copyfile2(source, target) -> None:
         """Copy from one file to another using CopyFile2 (Windows only)."""
         _winapi.CopyFile2(source, target, 0)
 else:
     copyfile2 = None
 
 
-def copyfileobj(source_f, target_f):
+def copyfileobj(source_f, target_f) -> None:
     """Copy data from file-like object source_f to file-like object target_f."""
     try:
         source_fd = source_f.fileno()
@@ -128,7 +128,7 @@ def copyfileobj(source_f, target_f):
                     return
                 except OSError as err:
                     if err.errno not in (EBADF, EOPNOTSUPP, ETXTBSY, EXDEV):
-                        raise err
+                        raise
 
             # Use OS copy where available.
             if _fcopyfile:
@@ -137,26 +137,26 @@ def copyfileobj(source_f, target_f):
                     return
                 except OSError as err:
                     if err.errno not in (EINVAL, ENOTSUP):
-                        raise err
+                        raise
             if _copy_file_range:
                 try:
                     _copy_file_range(source_fd, target_fd)
                     return
                 except OSError as err:
                     if err.errno not in (ETXTBSY, EXDEV):
-                        raise err
+                        raise
             if _sendfile:
                 try:
                     _sendfile(source_fd, target_fd)
                     return
                 except OSError as err:
                     if err.errno != ENOTSOCK:
-                        raise err
+                        raise
         except OSError as err:
             # Produce more useful error messages.
             err.filename = source_f.name
             err.filename2 = target_f.name
-            raise err
+            raise
 
     # Last resort: copy with fileobj read() and write().
     read_source = source_f.read
@@ -188,11 +188,14 @@ def magic_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline
         else:
             return attr(path, buffering, encoding, errors, newline)
     elif encoding is not None:
-        raise ValueError("binary mode doesn't take an encoding argument")
+        msg = "binary mode doesn't take an encoding argument"
+        raise ValueError(msg)
     elif errors is not None:
-        raise ValueError("binary mode doesn't take an errors argument")
+        msg = "binary mode doesn't take an errors argument"
+        raise ValueError(msg)
     elif newline is not None:
-        raise ValueError("binary mode doesn't take a newline argument")
+        msg = "binary mode doesn't take a newline argument"
+        raise ValueError(msg)
 
     try:
         attr = getattr(cls, f"__open_{mode}b__")
@@ -204,10 +207,11 @@ def magic_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline
             stream = TextIOWrapper(stream, encoding, errors, newline)
         return stream
 
-    raise TypeError(f"{cls.__name__} can't be opened with mode {mode!r}")
+    msg = f"{cls.__name__} can't be opened with mode {mode!r}"
+    raise TypeError(msg)
 
 
-def ensure_distinct_paths(source, target):
+def ensure_distinct_paths(source, target) -> None:
     """Raise OSError(EINVAL) if the other path is within this path."""
     # Note: there is no straightforward, foolproof algorithm to determine
     # if one directory is within another (a particularly perverse example
@@ -225,7 +229,7 @@ def ensure_distinct_paths(source, target):
     raise err
 
 
-def ensure_different_files(source, target):
+def ensure_different_files(source, target) -> None:
     """Raise OSError(EINVAL) if both paths refer to the same file."""
     try:
         source_file_id = source.info._file_id
@@ -245,7 +249,7 @@ def ensure_different_files(source, target):
     raise err
 
 
-def copy_info(info, target, follow_symlinks=True):
+def copy_info(info, target, follow_symlinks=True) -> None:
     """Copy metadata from the given PathInfo to the given local path."""
     copy_times_ns = (
         hasattr(info, "_access_time_ns")
@@ -310,10 +314,10 @@ def copy_info(info, target, follow_symlinks=True):
 class _PathInfoBase:
     __slots__ = ("_lstat_result", "_path", "_stat_result")
 
-    def __init__(self, path):
+    def __init__(self, path) -> None:
         self._path = str(path)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         path_type = "WindowsPath" if os.name == "nt" else "PosixPath"
         return f"<{path_type}.info>"
 
@@ -458,12 +462,10 @@ class _PosixPathInfo(_PathInfoBase):
 
     __slots__ = ()
 
-    def exists(self, *, follow_symlinks=True):
+    def exists(self, *, follow_symlinks=True) -> bool:
         """Whether this path exists."""
         st = self._stat(follow_symlinks=follow_symlinks, ignore_errors=True)
-        if st is None:
-            return False
-        return True
+        return st is not None
 
     def is_dir(self, *, follow_symlinks=True):
         """Whether this path is a directory."""
@@ -498,7 +500,7 @@ class DirEntryInfo(_PathInfoBase):
 
     __slots__ = ("_entry",)
 
-    def __init__(self, entry):
+    def __init__(self, entry) -> None:
         super().__init__(entry.path)
         self._entry = entry
 
