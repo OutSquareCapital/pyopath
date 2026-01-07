@@ -8,6 +8,7 @@ from typing import Literal, Self
 
 import polars as pl
 import pyochain as pc
+
 import pyopath
 
 DATA = Path("scripts", "data")
@@ -107,8 +108,8 @@ def _extract_members(cls: type) -> pc.Iter[Member]:
         pc.Iter(cls.mro())
         .take_while(lambda x: x is not object)
         .flat_map(lambda x: x.__dict__.items())
-        .filter(lambda kv: _is_callable_or_property(kv[1]))
-        .map(lambda kv: Member(class_name=cls.__name__, name=kv[0]).with_type(kv[1]))
+        .filter_star(lambda _, v: _is_callable_or_property(v))
+        .map_star(lambda k, v: Member(class_name=cls.__name__, name=k).with_type(v))
     )
 
 
@@ -121,12 +122,12 @@ def _save_and_report(df: pl.LazyFrame) -> None:
             return (
                 pc.Iter(df.iter_rows(named=True))
                 .group_by(lambda x: x["class"])
-                .for_each(
-                    lambda group: print(
-                        f"\n{group.key}:\n"
-                        + group.values.map(
-                            lambda x: f"  - {x['member']} ({x['type']})"
-                        ).join("\n")
+                .for_each_star(
+                    lambda key, group: print(
+                        f"\n{key}:\n"
+                        + group.map(lambda x: f"  - {x['member']} ({x['type']})").join(
+                            "\n"
+                        )
                     )
                 )
             )

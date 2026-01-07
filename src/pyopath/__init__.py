@@ -10,6 +10,7 @@ import io
 import ntpath
 import operator
 import os
+import pathlib
 import posixpath
 import sys
 from _collections_abc import Sequence
@@ -17,6 +18,7 @@ from errno import *
 from glob import _no_recurse_symlinks, _StringGlobber
 from itertools import chain
 from stat import S_ISBLK, S_ISCHR, S_ISDIR, S_ISFIFO, S_ISREG, S_ISSOCK
+from typing import Any
 
 try:
     import pwd
@@ -47,6 +49,8 @@ __all__ = [
     "UnsupportedOperation",
     "WindowsPath",
 ]
+
+type StrPath = str | pathlib.PathLike[str]
 
 
 class UnsupportedOperation(NotImplementedError):
@@ -129,7 +133,7 @@ class PurePath:
     )
     parser = os.path
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: StrPath, **kwargs: Any) -> Self:
         """Construct a PurePath from one or several strings and or existing
         PurePath objects.  The strings and path objects are combined so as
         to yield a canonicalized path, which is incorporated into the
@@ -139,8 +143,8 @@ class PurePath:
             cls = PureWindowsPath if os.name == "nt" else PurePosixPath
         return object.__new__(cls)
 
-    def __init__(self, *args):
-        paths = []
+    def __init__(self, *args: StrPath) -> None:
+        paths: list[str] = []
         for arg in args:
             if isinstance(arg, PurePath):
                 if arg.parser is not self.parser:

@@ -5,8 +5,9 @@ import tempfile
 from collections.abc import Generator
 
 import pyochain as pc
-import pyopath
 import pytest
+
+import pyopath
 
 
 class TestPathFilesystemQueries:

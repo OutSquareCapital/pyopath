@@ -6,21 +6,15 @@
     version         = "0.1.0"
 
 [build-system]
-    build-backend = "maturin"
-    requires      = ["maturin>=1.8"]
-
-[tool.maturin]
-    features = ["pyo3/extension-module"]
-    profile  = "dev"
-
+    build-backend = "uv_build"
+    requires      = ["uv_build>=0.9.18"]
 [dependency-groups]
     dev = [
-        "maturin>=1.8",
         "polars>=1.36.1",
         "pyochain>=0.6.1.51",
         "pytest>=8.0",
         "stubtester",
-    ]
+]
 
 [tool.ruff]
     lint.ignore = [
